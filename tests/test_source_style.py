@@ -264,11 +264,14 @@ def test_the_rules_govern_the_files_they_are_for():
     """A rule that governs no files passes for the wrong reason.
 
     The pack is small enough that a count would prove little, so the check
-    names files each rule has to reach instead.
+    names files each rule has to reach instead. The workflows are named only
+    where they are: the release archive leaves ``.github`` out.
     """
     assert ROOT / "README.md" in scanned()
     assert ROOT / "__init__.py" in scanned()
-    assert ROOT / ".github" / "workflows" / "tests.yml" in scanned()
+    workflow = ROOT / ".github" / "workflows" / "tests.yml"
+    if workflow.is_file():
+        assert workflow in scanned()
     assert ROOT / "tests" / "test_source_style.py" in commented()
     assert ROOT / "breeze_comfy" / "__init__.py" in commented()
     assert ROOT / "web" / "js" / "breeze.js" in scripts()
