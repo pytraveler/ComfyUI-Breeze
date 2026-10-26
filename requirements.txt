@@ -1,0 +1,2 @@
+# Nothing beyond ComfyUI itself. The extensions run in the browser, and the
+# Python side uses only the standard library and ComfyUI's own server.

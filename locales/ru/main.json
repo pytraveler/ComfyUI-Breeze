@@ -1,0 +1,19 @@
+{
+  "settingsCategories": {
+    "Breeze": "Breeze",
+    "Lineage": "Цепочка зависимостей",
+    "Wires": "Провода"
+  },
+  "breeze": {
+    "value": "значение",
+    "lastRun": "прошлый запуск, {ago}",
+    "justNow": "только что",
+    "secondsAgo": "{n} с назад",
+    "minutesAgo": "{n} мин назад",
+    "hoursAgo": "{n} ч назад",
+    "more": "и ещё {n}",
+    "missingNode": "нода не найдена",
+    "subgraphInput": "Вход подграфа",
+    "subgraphOutput": "Выход подграфа"
+  }
+}

@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: The tag and pyproject.toml must agree
+        run: |
+          tagged="${GITHUB_REF_NAME#v}"
+          declared=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          echo "tag $GITHUB_REF_NAME -> $tagged, pyproject.toml says $declared"
+          if [ "$tagged" != "$declared" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match version = \"$declared\" in pyproject.toml"
+            exit 1
+          fi
+          echo "VERSION=$tagged" >> "$GITHUB_ENV"
+
+      - name: Release notes out of the changelogs
+        run: |
+          section() { awk -v v="$VERSION" 'index($0, "## " v " - ") == 1 {f=1; next} f && /^## / {exit} f {print}' "$1"; }
+          section CHANGELOG.md > /tmp/en.md
+          section CHANGELOG_RU.md > /tmp/ru.md
+          if [ ! -s /tmp/en.md ] || [ ! -s /tmp/ru.md ]; then
+            echo "::error::no section for $VERSION in CHANGELOG.md or CHANGELOG_RU.md"
+            exit 1
+          fi
+          { cat /tmp/en.md; echo; echo "---"; echo; cat /tmp/ru.md; } > /tmp/notes.md
+          cat /tmp/notes.md
+
+      - name: The suite passes, which is also where the source-style rules live
+        env:
+          BREEZE_REQUIRE_NODE: "1"
+        run: |
+          python -m pip install --quiet --upgrade pip pytest
+          python -m pytest tests -q
+
+      - name: The pack compiles
+        run: python -m compileall -q __init__.py breeze_comfy
+
+      - name: Pack the archive
+        run: |
+          name="ComfyUI-Breeze"
+          mkdir -p dist
+          git archive --format=zip --prefix="$name/" -o "dist/$name-$VERSION.zip" "$GITHUB_REF_NAME"
+          echo "ARCHIVE=dist/$name-$VERSION.zip" >> "$GITHUB_ENV"
+          echo "PREFIX=$name" >> "$GITHUB_ENV"
+
+      - name: What is in the archive, and what is not
+        run: |
+          listed=$(unzip -Z1 "$ARCHIVE")
+          echo "$listed"
+          for bad in "\.venv/" "dev-junction" "comfyui-path\.txt" "\.mcp\.json" "IDEAS\.md" \
+                     "__pycache__" "\.github/" "\.gitignore" "\.gitattributes" "^$PREFIX/tools/"; do
+            if echo "$listed" | grep -qE -- "$bad"; then
+              echo "::error::$ARCHIVE contains something matching $bad"
+              exit 1
+            fi
+          done
+          for needed in __init__.py pyproject.toml requirements.txt \
+                        LICENSE NOTICE.md README.md README_RU.md \
+                        CHANGELOG.md CHANGELOG_RU.md \
+                        locales/ru/main.json locales/ru/settings.json \
+                        breeze_comfy/__init__.py breeze_comfy/last_run.py \
+                        web/js/breeze.js web/js/breeze.css web/js/words.js; do
+            echo "$listed" | grep -qxF "$PREFIX/$needed" || {
+              echo "::error::$needed is missing from $ARCHIVE"
+              exit 1
+            }
+          done
+          echo "checked: the entry point, the package, the licences and the"
+          echo "changelogs are in, the development tools and the local state are not"
+
+      - name: The archive passes its own suite after being unpacked
+        env:
+          BREEZE_REQUIRE_NODE: "1"
+        run: |
+          rm -rf /tmp/unpacked
+          mkdir -p /tmp/unpacked
+          unzip -q "$ARCHIVE" -d /tmp/unpacked
+          cd "/tmp/unpacked/$PREFIX"
+          python -m compileall -q __init__.py breeze_comfy
+          python -m pytest tests -q
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "$ARCHIVE" \
+            --title "ComfyUI-Breeze $VERSION" \
+            --notes-file /tmp/notes.md \
+            --verify-tag
