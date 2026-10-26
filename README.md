@@ -12,6 +12,13 @@ what the next run will compute again.
   <img alt="Python 3.10+" src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white">
 </p>
 
+![A ComfyUI graph in Russian with KSampler selected. ModelSamplingAuraFlow and two CLIP Text Encode prompts, which feed it, are outlined in blue with a soft blue glow; VAE Decode, which it feeds, in amber. The pointer rests on the MODEL wire into KSampler: two violet arrows stand on the wire, one back up towards ModelSamplingAuraFlow and one ahead towards KSampler, and the tooltip reads MODEL, ModelSamplingAuraFlow #69 MODEL, to KSampler #70 model. On the right the blue IMAGE wires from VAE Decode run as one trunk to a small dot and split there](docs/preview.png)
+
+*KSampler is selected: what feeds it is outlined in blue, what it feeds in
+amber. The pointer rests on a wire, which names its ends and shows the two
+arrows that carry the view to them. On the right, one output's wires share a
+trunk.*
+
 ## What it does
 
 - **What feeds a node, and what it feeds.** Select a node and everything it
@@ -43,6 +50,22 @@ what the next run will compute again.
   tooltip and the arrows find the trunk like any wire, and the arrow ahead on
   it frames every input it splits to. A wire through a reroute of yours keeps
   its own line.
+- **What the next run computes again.** Rest the pointer on Run and every
+  node the run needs is outlined: green where its result comes from the
+  cache, orange where it is computed again, yellow where it is computed on
+  every run, dashed orange where only a lazy input asks for it, which the
+  node may or may not do. Above each node computed again stands the time it
+  took the last time it was computed, and a note under the button sums it
+  up: computed again 2, from the cache 3, about 40 s. The answer comes from
+  ComfyUI's own cache, so a run from another tab, an entry the cache let go
+  and a seed that changes after every run all count. Under Settings >
+  Breeze > Forecast the marks can stay on the nodes all the time instead,
+  renewed after every edit and every run.
+
+![The forecast with the pointer resting on Run, in a YuE2 workflow with ComfyUI in Russian. Write the song, whose badge says it took 18.85 s last time, and The score it sang are outlined in green: both come from the cache. The song, a SaveAudioAdvanced node whose format has just been switched to mp3, is outlined in orange, with a tag beside its badges saying it took under a second. The note under the Run button reads Next run: computed again 1, from the cache 2, under a second](docs/what_computes_again.png)
+
+*Only the format of the save node has changed, so the next run saves the
+song again and takes the 19 seconds of singing from the cache.*
 
 Each can be switched off under Settings > Breeze, which is also where the
 fade, the glow's radius and the three outline colours are set; a radius of 0
@@ -50,8 +73,7 @@ turns the glow off. A colour given in eight hex digits
 carries an alpha as well. With ComfyUI set to Russian the settings and the
 tooltip are in Russian; in any other language they read in English.
 
-Next on the list: a compass to the nodes off screen, and a forecast of what
-the next run computes again.
+Next on the list: a compass to the nodes off screen.
 
 ### Where the values on a wire come from
 
@@ -70,16 +92,37 @@ tooltip gives the type and the ends, not yet the value. A prompt queued through
 the HTTP API carries no workflow and leaves nothing behind.
 
 To read the outputs the pack wraps `PromptExecutor.execute_async`, to learn
-which workflow is running, and two methods of `ExecutionList`. The originals
-run first and unchanged; a description that fails is dropped, never raised
-into the run. If an update of ComfyUI moves any of them, the pack wraps none,
-logs a warning at startup, and the tooltip shows no values; everything else
-keeps working.
+which workflow is running, and three methods of `ExecutionList`, one of them
+to time each node. The originals run first and unchanged; a description that
+fails is dropped, never raised into the run. If an update of ComfyUI moves
+any of them, the pack wraps none, logs a warning at startup, and the tooltip
+shows no values and Run no forecast; everything else keeps working.
+
+### How the forecast is made
+
+ComfyUI takes a node from its cache when the node's key is there: its class,
+its inputs, what its `IS_CHANGED` says, and the same for everything upstream.
+The browser cannot see that cache, so it sends the server the prompt Run
+would queue, and the server builds the keys for it the way a run does and
+looks them up in the cache the last run left. The prompt goes through what
+ComfyUI does to a queued prompt first, node replacements and validation, so a
+prompt ComfyUI would refuse gets the reason instead of a forecast. Handlers
+other packs register for queued prompts are not called.
+
+The cache is only read. `IS_CHANGED` does run, as it does when a prompt is
+queued, so a LoadImage hashes its file; that happens on a thread of its own,
+one forecast at a time. The cache can still change before the prompt runs,
+which is why it is a forecast. The seconds are those of the node's last
+computation in the same workflow, and a node no run has computed yet has
+none.
 
 ### Not yet supported
 
 - With "Modern Node Design (Nodes 2.0)" turned on under Settings > Comfy >
-  Nodes 2.0, the lineage fades the wires but not the nodes.
+  Nodes 2.0, the lineage fades the wires but not the nodes, and the forecast
+  marks no nodes; the note under Run still sums it up.
+- Inside a subgraph the forecast marks nothing; on the top level a subgraph's
+  node takes the mark of what is inside it.
 - A trunk only forms for inputs ahead of the output, on the left of their
   nodes; wires that run backwards, or into inputs too close to the output to
   gain anything, are drawn as before.

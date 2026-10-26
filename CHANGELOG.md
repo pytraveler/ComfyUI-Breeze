@@ -10,6 +10,20 @@ that disagrees with
 `pyproject.toml`, or one that either changelog has no section for. The section it
 finds is published as the release notes, English above Russian.
 
+## 0.2.0 - 2026-10-27
+
+- **What the next run computes again.** Resting the pointer on Run outlines
+  every node the run needs: green from the cache, orange computed again,
+  yellow computed on every run, dashed orange reached only through a lazy
+  input. Nodes computed again carry the time they took last time, and a
+  note under the button adds it up. The server answers from the cache
+  ComfyUI really holds, building each node's key the way a run does, after
+  the same replacements and validation; a prompt ComfyUI would refuse gets
+  the reason. Settings > Breeze > Forecast keeps the marks on the nodes all
+  the time instead, or turns them off.
+- **Every node is timed.** The server keeps how long each node took the last
+  time it was computed, next to the description of its outputs.
+
 ## 0.1.0 - 2026-10-26
 
 The first release, with four extensions.

@@ -34,6 +34,19 @@ for (const locale of LOCALES) {
     }
   })
 
+  test(locale + ": every option of a list setting is translated, and nothing else", () => {
+    const settings = load(locale, "settings.json")
+    for (const item of definitions(() => {})) {
+      const options = settings[key(item.id)].options
+      if (item.type !== "combo") {
+        assert.equal(options, undefined, item.id)
+        continue
+      }
+      assert.deepEqual(Object.keys(options ?? {}).sort(), item.options.map((option) => key(option.text)).sort(), item.id)
+      for (const [text, translated] of Object.entries(options)) assert.ok(translated.trim(), text)
+    }
+  })
+
   test(locale + ": every section of the panel is named, and nothing else", () => {
     const named = load(locale, "main.json").settingsCategories
     const used = new Set(definitions(() => {}).flatMap((item) => item.category.slice(0, 2)))

@@ -7,8 +7,10 @@ export const BOTH = "Breeze.Lineage.BothColor"
 export const TIP = "Breeze.WireTip.Enabled"
 export const ARROWS = "Breeze.WireArrows.Enabled"
 export const TRUNKS = "Breeze.WireTrunks.Enabled"
+export const FORECAST = "Breeze.Forecast.Mode"
 
 export const LOCALE = "Comfy.Locale"
+export const CONTROL = "Comfy.WidgetControlMode"
 
 export const DEFAULTS = {
   [LINEAGE]: true,
@@ -20,7 +22,10 @@ export const DEFAULTS = {
   [TIP]: true,
   [ARROWS]: true,
   [TRUNKS]: true,
+  [FORECAST]: "run",
 }
+
+export const FORECAST_MODES = ["run", "always", "off"]
 
 const FADE_MAX = 90
 
@@ -111,6 +116,20 @@ export function definitions(redraw) {
       defaultValue: DEFAULTS[TRUNKS],
       onChange: redraw,
     },
+    {
+      id: FORECAST,
+      category: ["Breeze", "Forecast", "Mode"],
+      name: "Show what the next run computes again",
+      tooltip: "Green comes from the cache, orange is computed again, yellow is computed on every run, with the seconds it took last time. The server answers from the cache ComfyUI really holds.",
+      type: "combo",
+      options: [
+        { text: "While the pointer is on Run", value: "run" },
+        { text: "Always, as tags on the nodes", value: "always" },
+        { text: "Off", value: "off" },
+      ],
+      defaultValue: DEFAULTS[FORECAST],
+      onChange: redraw,
+    },
   ]
   return all.map((item, index) => ({ ...item, sortOrder: all.length - index }))
 }
@@ -137,6 +156,11 @@ export function reader(get) {
     tip: () => Boolean(read(TIP)),
     arrows: () => Boolean(read(ARROWS)),
     trunks: () => Boolean(read(TRUNKS)),
+    forecast: () => {
+      const value = read(FORECAST)
+      return FORECAST_MODES.includes(value) ? value : DEFAULTS[FORECAST]
+    },
+    controlBefore: () => read(CONTROL) === "before",
     locale: () => {
       const value = read(LOCALE)
       return typeof value === "string" && value ? value : "en"

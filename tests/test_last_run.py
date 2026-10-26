@@ -124,6 +124,9 @@ class FakeExecutionList:
         self.updated.append(node_id)
         return "original result"
 
+    async def stage_node_execution(self):
+        return ("8", None, None)
+
 
 def running(workflow="wf"):
     """A Runs with a prompt of ``workflow`` running."""
@@ -231,6 +234,74 @@ def test_the_running_workflow_is_known_exactly_while_its_prompt_runs():
     assert runs.current is None
 
 
+def test_the_executor_that_ran_last_is_kept_for_the_forecast():
+    runs = last_run.Runs()
+
+    async def original(self, prompt, prompt_id, extra_data={}, execute_outputs=[]):
+        return None
+
+    execute = last_run.wrapped_execute(original, runs)
+    executor = object()
+    asyncio.run(execute(executor, {}, "p1", {}, []))
+    assert runs.executor is executor
+    assert runs.current is None
+
+
+class HoldingCache:
+    """An output cache that holds one entry for node 8, the object a cache hit hands on."""
+
+    def __init__(self):
+        self.held = entry([1])
+
+    def get_local(self, node_id):
+        return self.held if node_id == "8" else None
+
+
+def test_a_computed_node_is_timed_from_when_it_was_first_staged():
+    runs = running()
+    stage = last_run.wrapped_stage(FakeExecutionList.stage_node_execution, runs)
+    execution_list = FakeExecutionList()
+    assert asyncio.run(stage(execution_list)) == ("8", None, None)
+    first = runs.started["8"]
+    asyncio.run(stage(execution_list))
+    assert runs.started["8"] == first
+    last_run.report(execution_list, "8", entry([1]), runs)
+    assert runs.snapshot("wf")["8"]["seconds"] >= 0
+    assert runs.started == {}
+
+
+def test_a_node_taken_from_the_cache_keeps_the_seconds_it_took_when_computed():
+    runs = running()
+    runs.record("8", {"type": "VAEDecode", "outputs": ["x"], "at": 1, "seconds": 2.5})
+    execution_list = FakeExecutionList()
+    execution_list.output_cache = HoldingCache()
+    runs.start("8")
+    last_run.report(execution_list, "8", execution_list.output_cache.held, runs)
+    assert runs.snapshot("wf")["8"]["seconds"] == 2.5
+    runs.record("8", {"type": "ImageScale", "outputs": ["x"], "at": 2})
+    assert "seconds" not in runs.snapshot("wf")["8"]
+
+
+def test_a_node_never_staged_is_not_timed():
+    runs = running()
+    last_run.report(FakeExecutionList(), "8", entry([1]), runs)
+    assert "seconds" not in runs.snapshot("wf")["8"]
+
+
+def test_staging_that_hands_on_no_node_starts_no_clock_and_a_new_run_starts_none():
+    runs = running()
+
+    async def nothing(self):
+        return (None, {"node_id": "3"}, RuntimeError("cycle"))
+
+    stage = last_run.wrapped_stage(nothing, runs)
+    assert asyncio.run(stage(FakeExecutionList()))[0] is None
+    assert runs.started == {}
+    runs.start("8")
+    runs.begin("wf")
+    assert runs.started == {}
+
+
 def test_only_so_many_workflows_and_nodes_are_kept():
     runs = last_run.Runs(workflows=2, nodes=2)
     for workflow in ("a", "b", "c"):
@@ -292,14 +363,16 @@ def test_install_wraps_once_and_reports_false_without_comfyui(monkeypatch):
 
     runs = last_run.Runs()
     assert last_run.install(runs) is True
-    wrapped = (ExecutionList.cache_update, ExecutionList.__init__, PromptExecutor.execute_async)
+    wrapped = (ExecutionList.cache_update, ExecutionList.__init__,
+               ExecutionList.stage_node_execution, PromptExecutor.execute_async)
     assert all(getattr(function, last_run.MARK) for function in wrapped)
     assert routes.paths == [last_run.ROUTE]
 
     assert last_run.install(runs) is True
     assert (ExecutionList.cache_update, ExecutionList.__init__,
-            PromptExecutor.execute_async) == wrapped
+            ExecutionList.stage_node_execution, PromptExecutor.execute_async) == wrapped
     assert routes.paths == [last_run.ROUTE]
     assert ExecutionList.cache_update.__wrapped__ is FakeExecutionList.cache_update
     assert ExecutionList.__init__.__wrapped__ is FakeExecutionList.__init__
+    assert ExecutionList.stage_node_execution.__wrapped__ is FakeExecutionList.stage_node_execution
     assert PromptExecutor.execute_async.__wrapped__ is original_execute

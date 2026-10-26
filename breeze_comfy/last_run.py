@@ -6,13 +6,19 @@ nodes carries a value the browser never hears about, so this module writes a
 line about every output while the prompt runs, keeps the lines per workflow,
 and answers ``GET /breeze/outputs?workflow=<id>`` with them.
 
-Three methods are wrapped, and each original runs first and unchanged:
+Four methods are wrapped, and each original runs first and unchanged:
 
 - PromptExecutor.execute_async, to learn which workflow is running. The
   frontend sends the workflow along with every prompt it queues, in
   ``extra_data.extra_pnginfo.workflow``, and its ``id`` is the id of the root
   graph the browser has on screen. A prompt without one, queued through the
   HTTP API, is not about any graph on screen, and nothing is kept for it.
+  The executor itself is kept too: its cache is what breeze_comfy.forecast
+  reads.
+- ExecutionList.stage_node_execution, which hands the run the next node to
+  execute, to start that node's clock. A node that waits for something comes
+  back to it, and only the first time counts, so the seconds kept are those
+  from the moment it was first staged to the moment it handed on its result.
 - ExecutionList.cache_update, the one call every node the run visits passes
   through on its way to the nodes downstream: nodes that ran, nodes that
   finished asynchronously, and nodes whose cached result was taken instead.
@@ -24,7 +30,8 @@ Three methods are wrapped, and each original runs first and unchanged:
   ExecutionList.is_cached uses, which touches no cache bookkeeping.
 
 Only the description is kept: the shape and dtype of a tensor, the head of a
-string, a number. Nothing here holds a reference to a value, so the cache frees
+string, a number, and how long the node took when it was computed rather than
+taken from the cache. Nothing here holds a reference to a value, so the cache frees
 what it frees exactly as it would without this module, and a description that
 fails is dropped rather than raised into the run that produced the value. The
 descriptions last until ComfyUI restarts, so a reloaded page, or a second tab
@@ -210,6 +217,10 @@ class Runs:
     recently is the last to go once ``workflows`` are kept, and a workflow
     keeps at most ``nodes`` entries, which only a graph that expands into
     thousands of nodes ever reaches.
+
+    The clocks in ``started`` are only ever touched from the thread that runs
+    prompts, and ``executor`` is only ever replaced whole, so neither needs
+    the lock.
     """
 
     def __init__(self, workflows: int = 32, nodes: int = 4096):
@@ -217,24 +228,49 @@ class Runs:
         self.lock = threading.Lock()
         self.workflows = OrderedDict()
         self.current = None
+        self.executor = None
+        self.started = {}
 
-    def begin(self, workflow) -> None:
-        """A prompt of ``workflow`` started running; None for one of no workflow."""
+    def begin(self, workflow, executor=None) -> None:
+        """A prompt of ``workflow`` started running on ``executor``; None for one of no workflow.
+
+        The executor stays once the prompt is done, for the forecast to read
+        its cache.
+        """
         self.current = workflow
+        self.started = {}
+        if executor is not None:
+            self.executor = executor
 
     def end(self) -> None:
         """The running prompt finished, however it finished."""
         self.current = None
 
+    def start(self, node_id) -> None:
+        """``node_id`` was staged; its clock starts the first time it is."""
+        self.started.setdefault(str(node_id), time.perf_counter())
+
+    def took(self, node_id):
+        """Seconds since ``node_id`` was first staged, or None; the clock stops either way."""
+        started = self.started.pop(str(node_id), None)
+        return None if started is None else time.perf_counter() - started
+
     def record(self, node_id: str, entry: dict) -> None:
-        """Keep ``entry`` for ``node_id`` of the running workflow."""
+        """Keep ``entry`` for ``node_id`` of the running workflow.
+
+        An entry without seconds, of a node taken from the cache, keeps the
+        seconds the same node took the last time it was computed.
+        """
         workflow = self.current
         if workflow is None:
             return
         most_workflows, most_nodes = self.limits
         with self.lock:
             nodes = self.workflows.pop(workflow, None) or OrderedDict()
-            nodes.pop(node_id, None)
+            previous = nodes.pop(node_id, None) or {}
+            if ("seconds" not in entry and previous.get("seconds") is not None
+                    and previous.get("type") == entry.get("type")):
+                entry = dict(entry, seconds=previous["seconds"])
             nodes[node_id] = entry
             while len(nodes) > most_nodes:
                 nodes.popitem(last=False)
@@ -259,6 +295,10 @@ def report(execution_list, node_id, entry, runs: Runs) -> None:
     sent and have no wire on screen, so they are left out. The class type goes
     along, so the browser can tell a description of the node that is there now
     from one of a node that had the same id when the prompt was queued.
+
+    ``entry`` is the very object the output cache holds when the node was
+    taken from there; a computed result reaches cache_update before the cache.
+    Only a computed one is timed.
     """
     if runs.current is None:
         return
@@ -268,11 +308,15 @@ def report(execution_list, node_id, entry, runs: Runs) -> None:
     node = execution_list.dynprompt.get_original_prompt().get(node_id)
     if node is None:
         return
-    runs.record(str(node_id), {
+    seconds = runs.took(node_id)
+    found = {
         "type": node.get("class_type"),
         "outputs": describe_outputs(outputs),
         "at": int(time.time() * 1000),
-    })
+    }
+    if seconds is not None and execution_list.output_cache.get_local(node_id) is not entry:
+        found["seconds"] = round(seconds, 3)
+    runs.record(str(node_id), found)
 
 
 def report_cached(execution_list, runs: Runs) -> None:
@@ -316,6 +360,20 @@ def wrapped_init(original, runs: Runs):
     return marked(__init__, original)
 
 
+def wrapped_stage(original, runs: Runs):
+    """``stage_node_execution`` that starts the clock of the node it stages, on the same terms."""
+    async def stage_node_execution(self, *args, **kwargs):
+        staged = await original(self, *args, **kwargs)
+        try:
+            if staged[0] is not None:
+                runs.start(staged[0])
+        except Exception:
+            log.debug("Breeze: could not time the staged node", exc_info=True)
+        return staged
+
+    return marked(stage_node_execution, original)
+
+
 def wrapped_execute(original, runs: Runs):
     """``execute_async`` between a begin() and an end() for the workflow it runs.
 
@@ -324,7 +382,7 @@ def wrapped_execute(original, runs: Runs):
     """
     async def execute_async(self, *args, **kwargs):
         extra_data = kwargs.get("extra_data", args[2] if len(args) > 2 else None)
-        runs.begin(workflow_of(extra_data))
+        runs.begin(workflow_of(extra_data), self)
         try:
             return await original(self, *args, **kwargs)
         finally:
@@ -357,7 +415,7 @@ def add_route(server, runs: Runs) -> None:
 def install(runs: Runs = RUNS) -> bool:
     """Wrap what this module needs and add its route, once. False when there is nothing to wrap.
 
-    Nothing is wrapped unless all three methods are there: without the
+    Nothing is wrapped unless all four methods are there: without the
     workflow id from execute_async the descriptions could not be kept, and
     half the wrappers would only cost time.
     """
@@ -371,6 +429,7 @@ def install(runs: Runs = RUNS) -> bool:
         return False
     targets = ((ExecutionList, "cache_update", wrapped_update),
                (ExecutionList, "__init__", wrapped_init),
+               (ExecutionList, "stage_node_execution", wrapped_stage),
                (PromptExecutor, "execute_async", wrapped_execute))
     missing = [owner.__name__ + "." + name for owner, name, _wrap in targets
                if not callable(getattr(owner, name, None))]

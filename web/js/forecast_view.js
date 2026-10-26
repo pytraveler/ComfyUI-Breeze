@@ -1,0 +1,308 @@
+import { drawGlow } from "./glow.js"
+import { duration, onCanvas, summaryLines } from "./forecast.js"
+import { english } from "./words.js"
+
+export const RUN_BUTTON = '[data-testid="queue-button"]'
+
+export const COLOURS = { cached: "#4fcf73", run: "#ff8a3d", always: "#ffd23f", maybe: "#ff8a3d" }
+
+const BOX = 1
+
+const PAD = 4
+
+const OUTLINE_PX = 2
+
+const FONT_PX = 11
+const DOT_PX = 3.5
+const GAP_PX = 5
+
+const SCALE_FLOOR = 0.5
+
+const SETTLE_MS = 400
+const REFRESH_MS = 30000
+
+const TIP_GAP = 8
+const MARGIN = 8
+
+const SETTLE_STEP_MS = 150
+const SETTLE_TRIES = 10
+
+export function installForecast(canvas, { mode, glow = () => 0, say = english, isRoot, workflow, build, send, listen, redraw }) {
+  const proto = Object.getPrototypeOf(canvas)
+  const { draw, drawNode } = proto
+  const state = {
+    hover: null, button: null, pressed: null, ticket: 0,
+    tags: null, tagsFor: undefined, asked: undefined, key: null, stale: true, queued: 0, mode: null, asking: 0,
+  }
+  const frame = { shown: null, outline: false, glow: 0, unit: 1 }
+  const adopted = new WeakSet()
+  let timer = 0
+  let tip = null
+
+  const foundFor = (node) => frame.shown?.get(String(node.id)) ?? null
+
+  const adopt = (node) => {
+    if (adopted.has(node) || !Array.isArray(node.badges)) return
+    adopted.add(node)
+    const badge = {
+      get height() {
+        return foundFor(node) ? tagHeight(frame.unit) : 0
+      },
+      getWidth: (ctx) => {
+        const found = foundFor(node)
+        return found ? tagWidth(ctx, tagText(found, say), frame.unit) : 0
+      },
+      draw: (ctx, x, y) => {
+        const found = foundFor(node)
+        if (found) tag(ctx, found.state, tagText(found, say), x, y, frame.unit)
+      },
+    }
+    node.badges.push(() => badge)
+  }
+
+  proto.draw = function (...args) {
+    if (this === canvas) {
+      const current = mode()
+      if (current !== state.mode) {
+        state.mode = current
+        if (current === "always") state.stale = true
+      }
+      const due = state.stale || state.asked !== workflow()
+      if (current === "always" && due && !timer && !state.asking && !state.queued && !document.hidden) schedule(0)
+      const tags = current === "always" && !state.queued && state.tagsFor === workflow() ? state.tags : null
+      frame.shown = isRoot() ? state.hover ?? tags : null
+      frame.outline = Boolean(state.hover)
+      frame.glow = glow()
+      frame.unit = 1 / Math.min(1, Math.max(SCALE_FLOOR, this.ds.scale))
+    }
+    return draw.apply(this, args)
+  }
+
+  proto.drawNode = function (node, ctx) {
+    if (this === canvas) adopt(node)
+    const result = drawNode.apply(this, arguments)
+    const found = this === canvas && !globalThis.LiteGraph?.vueNodesMode ? foundFor(node) : null
+    if (found) paint(this, node, ctx, found, frame, say)
+    return result
+  }
+
+  function schedule(delay = SETTLE_MS) {
+    clearTimeout(timer)
+    timer = setTimeout(refresh, delay)
+  }
+
+  async function refresh() {
+    timer = 0
+    if (mode() !== "always" || document.hidden || state.queued) return
+    state.asking++
+    try {
+      const asked = workflow()
+      state.asked = asked
+      const request = await build().catch(() => null)
+      const key = request ? JSON.stringify(request) : ""
+      if (key === state.key && !state.stale) return
+      state.key = key
+      state.stale = false
+      const result = request ? await send(request).catch(() => null) : null
+      if (key !== state.key) return
+      state.tags = result?.nodes ? onCanvas(result.nodes) : null
+      state.tagsFor = asked
+      redraw()
+    } finally {
+      state.asking--
+    }
+  }
+
+  const enter = async (button) => {
+    if (mode() === "off") return
+    const mine = ++state.ticket
+    state.button = button
+    const request = await build().catch(() => null)
+    const result = request ? await send(request).catch(() => null) : null
+    if (mine !== state.ticket) return
+    state.hover = result?.nodes ? onCanvas(result.nodes) : null
+    tip ??= createTip()
+    fillTip(tip, say("forecastTitle"), summaryLines(result, say))
+    placeTip(tip, button.getBoundingClientRect())
+    redraw()
+    let tries = 0
+    const again = () => {
+      if (mine !== state.ticket || tip.hidden) return
+      placeTip(tip, button.getBoundingClientRect())
+      if (++tries < SETTLE_TRIES) setTimeout(again, SETTLE_STEP_MS)
+    }
+    setTimeout(again, SETTLE_STEP_MS)
+  }
+
+  const leave = () => {
+    state.ticket++
+    state.button = null
+    if (tip) tip.hidden = true
+    if (!state.hover) return
+    state.hover = null
+    redraw()
+  }
+
+  document.addEventListener("pointerover", (event) => {
+    const button = event.target?.closest?.(RUN_BUTTON)
+    if (button && button !== state.button && button !== state.pressed) enter(button)
+  })
+  document.addEventListener("pointerout", (event) => {
+    const button = state.button ?? state.pressed
+    if (!button || button.contains(event.relatedTarget)) return
+    state.pressed = null
+    leave()
+  })
+  document.addEventListener("pointerdown", (event) => {
+    if (!state.button?.contains(event.target)) return
+    state.pressed = state.button
+    leave()
+  }, true)
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) return
+    state.stale = true
+    redraw()
+  })
+  listen("graphChanged", () => {
+    if (mode() === "always") schedule()
+  })
+  listen("status", (event) => {
+    const remaining = event?.detail?.exec_info?.queue_remaining
+    if (typeof remaining !== "number" || remaining === state.queued) return
+    state.queued = remaining
+    if (!remaining) state.stale = true
+    redraw()
+  })
+  setInterval(() => {
+    state.stale = true
+    if (mode() === "always") redraw()
+  }, REFRESH_MS)
+
+  return { showing: () => Boolean(state.hover) }
+}
+
+function paint(canvas, node, ctx, found, { outline, glow, unit }, say) {
+  const [x, y, width, height] = node.boundingRect
+  const left = x - node.pos[0]
+  const top = y - node.pos[1]
+  const radius = node.renderingShape === BOX ? 0 : (globalThis.LiteGraph?.ROUND_RADIUS ?? 8)
+  const colour = COLOURS[found.state]
+  ctx.save()
+  if (outline) {
+    const ring = [left - PAD, top - PAD, width + 2 * PAD, height + 2 * PAD]
+    drawGlow(ctx, ring, { radius: glow, corner: radius + PAD, colour, scale: canvas.ds.scale })
+    ctx.beginPath()
+    ctx.globalAlpha = 1
+    ctx.lineWidth = OUTLINE_PX / Math.min(1, canvas.ds.scale)
+    ctx.strokeStyle = colour
+    if (found.state === "maybe") ctx.setLineDash([6 * unit, 4 * unit])
+    ctx.roundRect(...ring, radius + PAD)
+    ctx.stroke()
+    ctx.setLineDash([])
+  }
+  if (canvas.low_quality) {
+    const text = tagText(found, say)
+    const bottom = top - (outline ? PAD : 0) - GAP_PX * unit
+    tag(ctx, found.state, text, left + width - tagWidth(ctx, text, unit), bottom - tagHeight(unit), unit)
+  }
+  ctx.restore()
+}
+
+function tagText(found, say) {
+  return found.computed && found.timed ? duration(found.seconds, say) : ""
+}
+
+function tagHeight(unit) {
+  return (FONT_PX + 6) * unit
+}
+
+function tagWidth(ctx, text, unit) {
+  if (!text) return tagHeight(unit)
+  const font = ctx.font
+  ctx.font = FONT_PX * unit + "px system-ui, sans-serif"
+  const width = ctx.measureText(text).width
+  ctx.font = font
+  return 10 * unit + 2 * DOT_PX * unit + 4 * unit + width
+}
+
+function tag(ctx, state, text, left, top, unit) {
+  const colour = COLOURS[state]
+  const height = tagHeight(unit)
+  const width = tagWidth(ctx, text, unit)
+  const pad = 5 * unit
+  const dot = DOT_PX * unit
+  ctx.save()
+  ctx.font = FONT_PX * unit + "px system-ui, sans-serif"
+  ctx.globalAlpha = 1
+  ctx.beginPath()
+  ctx.fillStyle = "rgba(20, 20, 20, 0.85)"
+  ctx.roundRect(left, top, width, height, height / 2)
+  ctx.fill()
+  const cx = text ? left + pad + dot : left + width / 2
+  const cy = top + height / 2
+  ctx.beginPath()
+  ctx.arc(cx, cy, dot, 0, 2 * Math.PI)
+  if (state === "maybe") {
+    ctx.lineWidth = 1.5 * unit
+    ctx.strokeStyle = colour
+    ctx.stroke()
+  } else {
+    ctx.fillStyle = colour
+    ctx.fill()
+  }
+  if (text) {
+    ctx.fillStyle = colour
+    ctx.textAlign = "left"
+    ctx.textBaseline = "middle"
+    ctx.fillText(text, cx + dot + 4 * unit, cy)
+  }
+  ctx.restore()
+}
+
+function createTip() {
+  const tip = document.createElement("div")
+  tip.className = "breeze-wire-tip breeze-forecast-tip"
+  tip.hidden = true
+  document.body.append(tip)
+  return tip
+}
+
+function fillTip(tip, title, lines) {
+  const rows = [row("bwt-type", title)]
+  for (const line of lines) {
+    const item = row("bft-line", line.text)
+    if (line.state) item.prepend(dot(line.state))
+    rows.push(item)
+  }
+  tip.replaceChildren(...rows)
+}
+
+function row(name, text) {
+  const item = document.createElement("div")
+  item.className = name
+  item.textContent = text
+  return item
+}
+
+function dot(state) {
+  const item = document.createElement("span")
+  item.className = "bwt-dot"
+  if (state === "maybe") item.style.border = "2px solid " + COLOURS[state]
+  else item.style.background = COLOURS[state]
+  return item
+}
+
+function placeTip(tip, rect) {
+  tip.hidden = false
+  const { offsetWidth: width, offsetHeight: height } = tip
+  const left = Math.max(MARGIN, Math.min(rect.left, window.innerWidth - width - MARGIN))
+  let below = rect.bottom + TIP_GAP
+  for (const other of document.querySelectorAll('[role="tooltip"]')) {
+    const box = other.getBoundingClientRect()
+    if (!box.width || box.right <= left || box.left >= left + width || box.top > below + height) continue
+    below = Math.max(below, box.bottom + TIP_GAP)
+  }
+  const top = below + height + MARGIN <= window.innerHeight ? below : rect.top - TIP_GAP - height
+  tip.style.left = left + "px"
+  tip.style.top = Math.max(MARGIN, top) + "px"
+}

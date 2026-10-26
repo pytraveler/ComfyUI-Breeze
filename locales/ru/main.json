@@ -2,7 +2,8 @@
   "settingsCategories": {
     "Breeze": "Breeze",
     "Lineage": "Цепочка зависимостей",
-    "Wires": "Провода"
+    "Wires": "Провода",
+    "Forecast": "Прогноз кэша"
   },
   "breeze": {
     "value": "значение",
@@ -14,6 +15,23 @@
     "more": "и ещё {n}",
     "missingNode": "нода не найдена",
     "subgraphInput": "Вход подграфа",
-    "subgraphOutput": "Выход подграфа"
+    "subgraphOutput": "Выход подграфа",
+    "forecastTitle": "Следующий запуск",
+    "forecastRun": "Пересчитаются: {n}",
+    "forecastAlways": "Пересчитываются при каждом запуске: {n}",
+    "forecastMaybe": "Могут пересчитаться: {n}",
+    "forecastCached": "Из кэша: {n}",
+    "forecastNothing": "Пересчитывать нечего: всё возьмётся из кэша",
+    "forecastTime": "Примерно {time}",
+    "forecastQuick": "Меньше секунды",
+    "forecastAtLeast": "Не меньше {time}; ещё без замера: {n}",
+    "forecastUntimed": "Время ещё не замерено",
+    "forecastUntimedSome": "Ещё без замера: {n}",
+    "forecastFailed": "Прогноза нет: {reason}",
+    "forecastUnavailable": "Прогноза нет: сервер не ответил",
+    "durationUnderSecond": "<1 с",
+    "durationSeconds": "{n} с",
+    "durationMinutes": "{m} мин {s} с",
+    "durationHours": "{h} ч {m} мин"
   }
 }

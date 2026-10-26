@@ -53,3 +53,11 @@
 .breeze-wire-tip .bwt-label {
   font-family: system-ui, sans-serif;
 }
+
+.breeze-forecast-tip .bwt-type {
+  margin-bottom: 2px;
+}
+
+.breeze-forecast-tip .bwt-dot {
+  box-sizing: border-box;
+}

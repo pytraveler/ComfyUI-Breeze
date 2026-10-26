@@ -1,5 +1,7 @@
 import { app } from "../../scripts/app.js"
 import { api } from "../../scripts/api.js"
+import { fetchForecast, movingNodes } from "./forecast.js"
+import { installForecast } from "./forecast_view.js"
 import { installLineage } from "./lineage.js"
 import { fetchOutputs, wireValue } from "./last_run.js"
 import { definitions, reader } from "./settings.js"
@@ -34,7 +36,7 @@ app.registerExtension({
     })
     const say = speaker(() => wordsFor(translations, settings.locale()))
     const lineage = installLineage(canvas, {
-      enabled: settings.lineage,
+      enabled: () => settings.lineage() && !forecast.showing(),
       fade: settings.fade,
       colors: settings.colors,
       glow: settings.glow,
@@ -55,5 +57,20 @@ app.registerExtension({
       routeOf: trunks.routeOf,
     })
     const hover = watchWires(canvas, [arrows, tip])
+    const forecast = installForecast(canvas, {
+      mode: settings.forecast,
+      glow: settings.glow,
+      say,
+      isRoot: () => canvas.graph === app.rootGraph,
+      workflow: () => app.rootGraph?.id ?? "",
+      build: async () => {
+        const { output } = await app.graphToPrompt()
+        const root = app.rootGraph
+        return { workflow: root?.id ?? "", prompt: output, moving: movingNodes(root, settings.controlBefore()) }
+      },
+      send: (request) => fetchForecast((route, options) => api.fetchApi(route, options), request),
+      listen: (type, handler) => api.addEventListener(type, handler),
+      redraw,
+    })
   },
 })

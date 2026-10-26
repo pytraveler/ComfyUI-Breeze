@@ -13,6 +13,23 @@ export const ENGLISH = {
   missingNode: "missing node",
   subgraphInput: "Subgraph input",
   subgraphOutput: "Subgraph output",
+  forecastTitle: "Next run",
+  forecastRun: "Computed again: {n}",
+  forecastAlways: "Computed on every run: {n}",
+  forecastMaybe: "May be computed: {n}",
+  forecastCached: "From the cache: {n}",
+  forecastNothing: "Nothing to compute: it all comes from the cache",
+  forecastTime: "About {time}",
+  forecastQuick: "Under a second",
+  forecastAtLeast: "At least {time}; not timed yet: {n}",
+  forecastUntimed: "Not timed yet",
+  forecastUntimedSome: "Not timed yet: {n}",
+  forecastFailed: "No forecast: {reason}",
+  forecastUnavailable: "No forecast: the server did not answer",
+  durationUnderSecond: "<1 s",
+  durationSeconds: "{n} s",
+  durationMinutes: "{m} min {s} s",
+  durationHours: "{h} h {m} min",
 }
 
 export async function fetchTranslations(fetchApi) {
