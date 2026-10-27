@@ -125,7 +125,9 @@ With each line the server keeps a fingerprint of the key ComfyUI's cache filed
 the result under. The forecast below builds the keys the graph on screen would
 have, and a node whose key is still the same would hand on the same again,
 whether the cache still holds the result or not; one whose key has changed is
-shown in italics on the inputs it feeds. The forecast is asked for after every
+shown in italics on the inputs it feeds. A key with a NaN from `IS_CHANGED` in
+it, the way a node computed on every run says so, never counts as the same.
+The forecast is asked for after every
 edit that changes the prompt, the way the forecast's marks that stay on the
 nodes are, and while none has come back the value from the last run is shown
 dimmed.

@@ -255,6 +255,7 @@ def test_every_node_gets_the_fingerprint_of_its_key_cached_or_not(monkeypatch):
     changed = asyncio.run(forecast.forecast(prompt, None))["keys"]
     assert [changed[i] == before[i] for i in ("1", "2", "3", "4", "9")] == [True, True, False, False, True]
     assert changed["5"] != asyncio.run(forecast.forecast(prompt, None))["keys"]["5"]
+    assert forecast.unchanged(changed, prompt, {"5": {"key": changed["5"], "type": "Clock"}}) == {"5": False}
 
 
 def test_before_any_run_everything_is_computed(monkeypatch):

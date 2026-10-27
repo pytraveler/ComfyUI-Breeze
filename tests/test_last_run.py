@@ -260,7 +260,15 @@ def test_the_key_a_result_is_filed_under_is_kept_as_a_fingerprint():
 def test_a_key_with_a_nan_in_it_matches_no_later_one():
     nan = float("nan")
     assert last_run.fingerprint(FakeKeys(nan), "8") != last_run.fingerprint(FakeKeys(float("nan")), "8")
+    assert last_run.fingerprint(FakeKeys(nan), "8") != last_run.fingerprint(FakeKeys(nan), "8"), \
+        "a NaN hashes by address, and a later one may get the address back"
     assert last_run.fingerprint(None, "8") is None
+
+
+def test_a_key_with_an_object_equal_only_to_itself_matches_no_later_one():
+    unhashable = object()
+    assert last_run.fingerprint(FakeKeys(unhashable), "8") != last_run.fingerprint(FakeKeys(unhashable), "8")
+    assert last_run.fingerprint(FakeKeys((7, "a", None, b"")), "8") == last_run.fingerprint(FakeKeys((7, "a", None, b"")), "8")
 
 
 def test_the_running_workflow_is_known_exactly_while_its_prompt_runs():

@@ -10,6 +10,16 @@ that disagrees with
 `pyproject.toml`, or one that either changelog has no section for. The section it
 finds is published as the release notes, English above Russian.
 
+## 0.4.1 - 2026-10-27
+
+- **A node computed on every run no longer passes for unchanged.** The value
+  of a node whose `IS_CHANGED` answers NaN, or whose key holds something
+  ComfyUI cannot hash, could now and then show on its inputs as though it
+  still stood: the fingerprint of its key was a number taken from where the
+  NaN lay in memory, and a later NaN could land in the same place. The
+  fingerprint of such a key now equals nothing, so the value is always in
+  italics.
+
 ## 0.4.0 - 2026-10-27
 
 - **What an input gets.** A widget with a wire into it, greyed out down to

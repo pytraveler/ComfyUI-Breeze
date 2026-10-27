@@ -77,6 +77,9 @@ HOLDERS = ("model", "cond_stage_model", "first_stage_model")
 they wrap. They are read from the instance dict and never through getattr, so a
 property that would load or compute something is never triggered."""
 
+STEADY = (str, int, float, bool, bytes, type(None))
+"""What a cache key holds at its leaves when a key built again would equal it."""
+
 log = logging.getLogger(__name__)
 
 
@@ -354,15 +357,25 @@ def fingerprint(keys, node_id):
     Two keys the cache would take for the same entry give the same number
     within one process, which is as long as anything here is kept. The key
     itself is not kept: it holds the inputs of every node upstream. A key
-    with something the cache cannot compare in it, a NaN from IS_CHANGED
-    among them, gives a number no later key matches, as the cache never
-    matches it either.
+    that is not steady() gives a NaN, which equals nothing, not even itself:
+    such a key holds a NaN from IS_CHANGED or an object ComfyUI could not
+    make hashable, both of which hash by address, and once the key is let
+    go a later one can land on the same address and the same number.
     """
     try:
         key = keys.get_data_key(node_id)
-        return None if key is None else hash(key)
+        if key is None:
+            return None
+        return hash(key) if steady(key) else float("nan")
     except Exception:
         return None
+
+
+def steady(key) -> bool:
+    """Whether ``key``, tuples and frozensets down to STEADY values, would equal itself built again."""
+    if isinstance(key, (tuple, frozenset)):
+        return all(steady(part) for part in key)
+    return isinstance(key, STEADY) and key == key
 
 
 def report_cached(execution_list, runs: Runs) -> None:
