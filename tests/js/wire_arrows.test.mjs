@@ -170,6 +170,25 @@ test("a wire on a trunk is followed along the trunk and its branch, and the trun
   assert.deepEqual(arrowsAround(g, [g.getLink(8)], onTrunk, 1, SPLINE, () => "#fff"), [])
 })
 
+test("with the light on, a circle stands on the wire between the arrows and lights every wire there from its output", () => {
+  const g = fan()
+  const line = wireLine(g, g.getLink(8), SPLINE)
+  const pointer = line[20]
+  const arrows = arrowsAround(g, [g.getLink(7), g.getLink(8)], pointer, 1, SPLINE, () => "#fff", () => null, { light: true })
+  assert.deepEqual(arrows.map((arrow) => arrow.key), ["source", "target", "light"])
+  const circle = arrows.at(-1)
+  assert.ok(off(line, circle.middle) < 1 && Math.hypot(circle.middle[0] - pointer[0], circle.middle[1] - pointer[1]) < 1)
+  assert.deepEqual(circle.links.map((item) => item.id), [7, 8])
+  assert.equal(arrowAt(arrows, circle.middle, 1), circle, "a press on the circle lands on it, not on an arrow")
+  for (const arrow of arrows.slice(0, 2)) assert.equal(arrowAt(arrows, arrow.middle, 1), arrow)
+  const [onlyCircle] = arrowsAround(g, [g.getLink(8)], pointer, 1, SPLINE, () => "#fff", () => null, { arrows: false, light: true })
+  assert.equal(onlyCircle.key, "light", "the circle stands with the arrows turned off")
+  for (const [scale, onScreen] of [[0.25, 6], [1, 6], [2, 12]]) {
+    const [, , grown] = arrowsAround(g, [g.getLink(8)], pointer, scale, SPLINE, () => "#fff", () => null, { light: true })
+    assert.ok(Math.abs(grown.radius * scale - onScreen) < 1e-9, String(scale))
+  }
+})
+
 test("a link gone from the graph, or with an end not on it, has no line and no arrows", () => {
   const broken = graph([node(1, LOAD, { inputs: 0 })], [link(7, 1, 0, 9, 0)])
   assert.equal(wireLine(broken, broken.getLink(7), SPLINE), null)

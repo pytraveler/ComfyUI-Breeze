@@ -11,6 +11,9 @@ export const INPUTS = "Breeze.InputValues.Enabled"
 export const FORECAST = "Breeze.Forecast.Mode"
 export const COMPASS = "Breeze.Compass.Mode"
 export const COMPASS_NOTE = "Breeze.Compass.Tooltip"
+export const LIGHT = "Breeze.RunLight.Enabled"
+export const LIGHT_SPEED = "Breeze.RunLight.Speed"
+export const LIGHT_REPEATS = "Breeze.RunLight.Repeats"
 
 export const LOCALE = "Comfy.Locale"
 export const CONTROL = "Comfy.WidgetControlMode"
@@ -29,6 +32,9 @@ export const DEFAULTS = {
   [FORECAST]: "run",
   [COMPASS]: "empty",
   [COMPASS_NOTE]: true,
+  [LIGHT]: true,
+  [LIGHT_SPEED]: 100,
+  [LIGHT_REPEATS]: 3,
 }
 
 export const FORECAST_MODES = ["run", "always", "off"]
@@ -38,6 +44,11 @@ export const COMPASS_MODES = ["empty", "always", "off"]
 const FADE_MAX = 90
 
 const GLOW_MAX = 40
+
+const SPEED_MIN = 25
+const SPEED_MAX = 300
+
+const REPEATS_MAX = 5
 
 const HEX = /^#?([0-9a-f]{6}|[0-9a-f]{8})$/i
 
@@ -169,6 +180,33 @@ export function definitions(redraw) {
       type: "boolean",
       defaultValue: DEFAULTS[COMPASS_NOTE],
     },
+    {
+      id: LIGHT,
+      category: ["Breeze", "Run", "Light"],
+      name: "Send a light along the wires of each node as it finishes",
+      tooltip: "While a prompt runs, a light runs from the outputs of a node that has just finished to the inputs its results go to, so the branch being computed shows. The circle between the arrows on a wire the pointer rests on sends it along that wire at any time.",
+      type: "boolean",
+      defaultValue: DEFAULTS[LIGHT],
+      onChange: redraw,
+    },
+    {
+      id: LIGHT_SPEED,
+      category: ["Breeze", "Run", "Speed"],
+      name: "How fast the light runs, in percent",
+      tooltip: "100 is the usual pace, 50 half as fast, 300 three times as fast. A long wire takes longer than a short one, but no more than two seconds at 100.",
+      type: "slider",
+      attrs: { min: SPEED_MIN, max: SPEED_MAX, step: 25 },
+      defaultValue: DEFAULTS[LIGHT_SPEED],
+    },
+    {
+      id: LIGHT_REPEATS,
+      category: ["Breeze", "Run", "Repeats"],
+      name: "How many times the light runs along a wire",
+      tooltip: "One after another, while the whole wire glows softly.",
+      type: "slider",
+      attrs: { min: 1, max: REPEATS_MAX, step: 1 },
+      defaultValue: DEFAULTS[LIGHT_REPEATS],
+    },
   ]
   return all.map((item, index) => ({ ...item, sortOrder: all.length - index }))
 }
@@ -205,6 +243,9 @@ export function reader(get) {
       return COMPASS_MODES.includes(value) ? value : DEFAULTS[COMPASS]
     },
     compassNote: () => Boolean(read(COMPASS_NOTE)),
+    light: () => Boolean(read(LIGHT)),
+    lightSpeed: () => Math.min(SPEED_MAX, Math.max(SPEED_MIN, Number(read(LIGHT_SPEED)) || DEFAULTS[LIGHT_SPEED])) / 100,
+    lightRepeats: () => Math.min(REPEATS_MAX, Math.max(1, Math.round(Number(read(LIGHT_REPEATS)) || DEFAULTS[LIGHT_REPEATS]))),
     controlBefore: () => read(CONTROL) === "before",
     locale: () => {
       const value = read(LOCALE)

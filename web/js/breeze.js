@@ -8,6 +8,7 @@ import { installForecast } from "./forecast_view.js"
 import { installInputValues } from "./input_values.js"
 import { installLineage } from "./lineage.js"
 import { fetchOutputs, wireValue } from "./last_run.js"
+import { installRunLight, watchQueue } from "./run_light.js"
 import { COMPASS, definitions, reader } from "./settings.js"
 import { installTrunks } from "./trunks.js"
 import { installWireArrows } from "./wire_arrows.js"
@@ -82,6 +83,17 @@ app.registerExtension({
       glow: settings.glow,
     })
     const trunks = installTrunks(canvas, { enabled: settings.trunks, alpha: lineage.alpha })
+    const light = installRunLight(canvas, {
+      enabled: settings.light,
+      speed: settings.lightSpeed,
+      repeats: settings.lightRepeats,
+      root: () => app.rootGraph,
+      workflow,
+      queued: watchQueue(api),
+      listen: (type, handler) => api.addEventListener(type, handler),
+      routeOf: trunks.routeOf,
+      alpha: lineage.alpha,
+    })
     const tip = installWireTip(canvas, {
       enabled: settings.tip,
       load: () => canvas.graph === app.rootGraph ? outputs() : Promise.resolve(null),
@@ -93,6 +105,7 @@ app.registerExtension({
       enabled: settings.arrows,
       flown: () => hover.end(),
       routeOf: trunks.routeOf,
+      light,
     })
     const hover = watchWires(canvas, [arrows, tip])
     installCompass(canvas, { mode: settings.compass, note: settings.compassNote, say })

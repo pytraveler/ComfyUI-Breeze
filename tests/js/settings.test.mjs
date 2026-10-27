@@ -2,8 +2,8 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 
 import {
-  ARROWS, BOTH, COMPASS, COMPASS_MODES, COMPASS_NOTE, CONTROL, DEFAULTS, DOWNSTREAM, FADE, FORECAST, FORECAST_MODES, GLOW, INPUTS, LINEAGE, LOCALE, TIP,
-  TRUNKS, UPSTREAM,
+  ARROWS, BOTH, COMPASS, COMPASS_MODES, COMPASS_NOTE, CONTROL, DEFAULTS, DOWNSTREAM, FADE, FORECAST, FORECAST_MODES, GLOW, INPUTS, LIGHT,
+  LIGHT_REPEATS, LIGHT_SPEED, LINEAGE, LOCALE, TIP, TRUNKS, UPSTREAM,
   definitions, hexColor, reader,
 } from "../../web/js/settings.js"
 
@@ -40,7 +40,7 @@ test("a colour is stored the way the colour picker stores one", () => {
 test("every setting that changes the picture redraws it", () => {
   const redraw = () => {}
   const redrawn = definitions(redraw).filter((item) => item.onChange === redraw)
-  assert.deepEqual(redrawn.map((item) => item.id), [LINEAGE, FADE, GLOW, UPSTREAM, DOWNSTREAM, BOTH, TRUNKS, INPUTS, FORECAST, COMPASS])
+  assert.deepEqual(redrawn.map((item) => item.id), [LINEAGE, FADE, GLOW, UPSTREAM, DOWNSTREAM, BOTH, TRUNKS, INPUTS, FORECAST, COMPASS, LIGHT])
 })
 
 test("a list setting offers each of its values once, the default among them", () => {
@@ -78,13 +78,17 @@ test("a setting never changed reads as its default", () => {
   assert.equal(settings.forecast(), "run")
   assert.equal(settings.compass(), "empty")
   assert.equal(settings.compassNote(), true)
+  assert.equal(settings.light(), true)
+  assert.equal(settings.lightSpeed(), 1)
+  assert.equal(settings.lightRepeats(), 3)
   assert.equal(settings.controlBefore(), false)
 })
 
 test("the values stored are what the extensions get", () => {
   const settings = reader(stored({
     [LINEAGE]: false, [FADE]: 35, [GLOW]: 0, [UPSTREAM]: "00ff00", [DOWNSTREAM]: "ff000080", [TIP]: false, [ARROWS]: false,
-    [TRUNKS]: false, [INPUTS]: false, [FORECAST]: "always", [COMPASS]: "always", [COMPASS_NOTE]: false, [CONTROL]: "before",
+    [TRUNKS]: false, [INPUTS]: false, [FORECAST]: "always", [COMPASS]: "always", [COMPASS_NOTE]: false, [LIGHT]: false,
+    [LIGHT_SPEED]: 250, [LIGHT_REPEATS]: 5, [CONTROL]: "before",
   }))
   assert.equal(settings.lineage(), false)
   assert.equal(settings.fade(), 0.35)
@@ -97,6 +101,9 @@ test("the values stored are what the extensions get", () => {
   assert.equal(settings.forecast(), "always")
   assert.equal(settings.compass(), "always")
   assert.equal(settings.compassNote(), false)
+  assert.equal(settings.light(), false)
+  assert.equal(settings.lightSpeed(), 2.5)
+  assert.equal(settings.lightRepeats(), 5)
   assert.equal(settings.controlBefore(), true)
 })
 
@@ -110,6 +117,14 @@ test("a value that makes no sense gives the default, and a fade stays in range",
   assert.equal(reader(stored({ [GLOW]: "wide" })).glow(), 0)
   assert.equal(reader(stored({ [FORECAST]: "sometimes" })).forecast(), "run")
   assert.equal(reader(stored({ [COMPASS]: "north" })).compass(), "empty")
+  assert.equal(reader(stored({ [LIGHT_SPEED]: 1000 })).lightSpeed(), 3)
+  assert.equal(reader(stored({ [LIGHT_SPEED]: 5 })).lightSpeed(), 0.25)
+  assert.equal(reader(stored({ [LIGHT_SPEED]: "brisk" })).lightSpeed(), 1)
+  assert.equal(reader(stored({ [LIGHT_SPEED]: 0 })).lightSpeed(), 1)
+  assert.equal(reader(stored({ [LIGHT_REPEATS]: 40 })).lightRepeats(), 5)
+  assert.equal(reader(stored({ [LIGHT_REPEATS]: -2 })).lightRepeats(), 1)
+  assert.equal(reader(stored({ [LIGHT_REPEATS]: 2.4 })).lightRepeats(), 2)
+  assert.equal(reader(stored({ [LIGHT_REPEATS]: "often" })).lightRepeats(), 3)
 })
 
 test("settings not there to ask read as the defaults", () => {

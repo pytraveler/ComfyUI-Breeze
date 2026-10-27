@@ -10,6 +10,17 @@ that disagrees with
 `pyproject.toml`, or one that either changelog has no section for. The section it
 finds is published as the release notes, English above Russian.
 
+## 0.5.0 - 2026-10-27
+
+- **What the run is computing now.** While a prompt queued from the page
+  runs, a light runs along the wires out of each node as it finishes, to
+  the inputs its results go to, three times over while the whole wire
+  glows, so the branch being computed shows. It runs under the nodes in the
+  wire's colour, at one pace, and goes on through Reroute nodes and
+  subgraphs. A circle between the two arrows on a wire the pointer rests on
+  sends the light along that wire at any time. Settings > Breeze > Run turns
+  it off and sets how fast it runs and how many times.
+
 ## 0.4.1 - 2026-10-27
 
 - **A node computed on every run no longer passes for unchanged.** The value

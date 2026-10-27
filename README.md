@@ -3,7 +3,8 @@
 Frontend extensions that make a ComfyUI graph easier to read and to work in.
 They answer the questions a graph raises while you look at it: what feeds this
 node, what this wire carries, what this input gets, where the nodes went when
-the screen is empty, what the next run will compute again.
+the screen is empty, what the next run will compute again, what the run is
+computing now.
 
 [Russian version](README_RU.md) | [Changelog](CHANGELOG.md)
 
@@ -34,6 +35,12 @@ trunk.*
   along it in the last run: `1x1536x1024x3 float32` for an image, the head of
   the text for a string, `latent 1x16x128x128 float32`, `ModelPatcher: Flux`.
   Where wires overlap, each one is described.
+
+  ![The pointer rests on the IMAGE wire from Text to Image (MOSS-Image) to Save Image, with ComfyUI in Russian. On the wire beside it stand two blue arrows, one back towards the output and one ahead towards the input, with a small circle between them. The tooltip reads IMAGE, Text to Image (MOSS-Image) #18 IMAGE, to Save Image #9 images, last run 4 min ago, 1x1024x1024x3 float32](docs/what_this_wire.png)
+
+  *The tooltip names the wire's ends and what went along it in the last
+  run; the arrows and the circle between them stand where the pointer is.*
+
 - **What an input gets.** A widget with a wire into it is greyed out down to
   its name, and the row now says what comes in and from where: `1024` and an
   arrow back to Resolution Selector. A Primitive, or a node whose one setting is
@@ -63,6 +70,28 @@ trunk.*
   tooltip and the arrows find the trunk like any wire, and the arrow ahead on
   it frames every input it splits to. A wire through a reroute of yours keeps
   its own line.
+
+  ![The wires from the IMAGE output of a node on the left, drawn as one blue trunk that runs to a small dot just before a column of four nodes on the right and splits there, one wire to each node](docs/wire_leads.png)
+
+  *One output into four inputs in a column: one trunk, split at the dot.*
+- **What the run is computing now.** While a prompt queued from the page
+  runs, a light runs along the wires out of each node as it finishes, from
+  its outputs to the inputs its results go to, three times over while the
+  whole wire glows, so the branch being computed shows as the run goes. The
+  light is in the wire's colour and runs under the nodes at one pace, so a
+  long wire takes longer than a short one, though no more than two seconds;
+  it goes on through Reroute nodes and into and out of subgraphs. A small
+  circle stands on a wire the pointer rests on, between its two arrows, and
+  a click on it sends the light along that wire at any time, along every
+  branch of a trunk. Settings > Breeze > Run turns it off and sets how fast
+  it runs and how many times. ComfyUI tells only the page that queued a
+  prompt how its nodes are doing, so a run queued from another tab has no
+  light.
+
+  ![The IMAGE wire from Text to Image (MOSS-Image) to Save Image during a run: the whole wire glows a lighter blue, and a bright white head with a fading tail is about to reach the input on the right. Above Save Image a tag reads 0.116s](docs/wire_light.png)
+
+  *Text to Image has finished, and the light runs along its wire to the
+  node that saves the image.*
 - **Where the nodes went.** When no node is in view, arrows at the edges
   of the canvas point to the ones off screen: one to each group, with its
   name, and one to each cluster of nodes outside any group, with how many
@@ -78,6 +107,16 @@ trunk.*
   minimap's in the toolbar at the bottom right of the canvas, turns them off
   and back on, and the command behind it can be given a key under Settings >
   Keybinding.
+
+  ![Two white arrows at the top edge of an empty canvas, one with 3 under it and one with 4. The pointer rests on the second, and a list beside it names the four nodes it points to: Text to Image (MOSS-Image), Save Image, Note: ref_image, Resolution Selector](docs/compass_arrows.png)
+
+  *No node is in view: each arrow points to nodes off screen and says how
+  many there are, and resting on one lists them.*
+
+  ![The toolbar at the bottom right of the canvas: select, fit view, zoom at 112%, minimap, link visibility, and last the button with a compass on it, highlighted](docs/compass_button.png)
+
+  *The button with the compass, last in the toolbar, turns the arrows off
+  and back on.*
 - **What the next run computes again.** Rest the pointer on Run and every
   node the run needs is outlined: green where its result comes from the
   cache, orange where it is computed again, yellow where it is computed on
@@ -91,13 +130,15 @@ trunk.*
   renewed after every edit and every run. With Nodes 2.0 the outlines, their
   glow and the tags sit on the nodes it draws as well.
 
-![The forecast with the pointer resting on Run, in a YuE2 workflow with ComfyUI in Russian. Write the song, whose badge says it took 18.85 s last time, and The score it sang are outlined in green: both come from the cache. The song, a SaveAudioAdvanced node whose format has just been switched to mp3, is outlined in orange, with a tag beside its badges saying it took under a second. The note under the Run button reads Next run: computed again 1, from the cache 2, under a second](docs/what_computes_again.png)
+  ![The forecast with the pointer resting on Run, with ComfyUI in Russian. Text to Image (MOSS-Image) is outlined in orange with a tag above it saying 17 s, Save Image in orange with a tag saying under a second, and Resolution Selector below them in green. The note under Run reads Next run: computed again 3, from the cache 14, about 17 s. On Text to Image the rows of width and height read 1024 with an arrow back to Resolution Selector](docs/forecast.png)
 
-*Only the format of the save node has changed, so the next run saves the
-song again and takes the 19 seconds of singing from the cache.*
+  *The next run computes Text to Image again, for about 17 seconds, and
+  saves the image again; Resolution Selector comes from the cache, and the
+  rows of width and height say what it hands on: 1024.*
 
 Each can be switched off under Settings > Breeze, which is also where the
-fade, the glow's radius and the three outline colours are set; a radius of 0
+fade, the glow's radius, the three outline colours and the pace of the
+light are set; a radius of 0
 turns the glow off. A colour given in eight hex digits
 carries an alpha as well. With ComfyUI set to Russian the settings and the
 tooltip are in Russian; in any other language they read in English.
@@ -156,15 +197,6 @@ one forecast at a time. The cache can still change before the prompt runs,
 which is why it is a forecast. The seconds are those of the node's last
 computation in the same workflow, and a node no run has computed yet has
 none.
-
-### Not yet supported
-
-- Inside a subgraph the forecast marks nothing; on the top level a subgraph's
-  node takes the mark of what is inside it. The inputs there show the values
-  of Primitives and seed nodes, and only the name of any other node.
-- A trunk only forms for inputs ahead of the output, on the left of their
-  nodes; wires that run backwards, or into inputs too close to the output to
-  gain anything, are drawn as before.
 
 ## How it changes a workflow
 

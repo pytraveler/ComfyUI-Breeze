@@ -21,6 +21,9 @@ const GAP_PX = 10
 const LENGTH_PX = 16
 const HALF_PX = 8
 
+const DISC_PX = 6
+const DOT_SHARE = 0.4
+
 const ON_PX = 12
 
 const HIT_PX = 13
@@ -33,7 +36,7 @@ const FLASH_GLOW = 18
 const PAD = 4
 const OUTLINE_PX = 2
 
-export function installWireArrows(canvas, { enabled, flown = () => {}, routeOf = () => null }) {
+export function installWireArrows(canvas, { enabled, flown = () => {}, routeOf = () => null, light = null }) {
   const element = canvas.canvas
   const proto = Object.getPrototypeOf(canvas)
   const { drawFrontCanvas } = proto
@@ -45,11 +48,17 @@ export function installWireArrows(canvas, { enabled, flown = () => {}, routeOf =
   let probe = null
   let flash = null
 
+  const lighting = () => Boolean(light?.enabled())
+  const wanted = () => enabled() || lighting()
+
   const current = () => {
-    if (!shown || canvas.graph !== shown.graph || !enabled()) return []
+    if (!shown || canvas.graph !== shown.graph) return []
+    const pointing = enabled()
+    const lit = lighting()
+    if (!pointing && !lit) return []
     const links = [...shown.ids].map((id) => shown.graph.getLink(id)).filter(Boolean)
     return arrowsAround(shown.graph, links, shown.point, canvas.ds.scale,
-      canvas.links_render_mode, (link) => colourOf(canvas, link), routeOf)
+      canvas.links_render_mode, (link) => colourOf(canvas, link), routeOf, { arrows: pointing, light: lit })
   }
 
   const heat = (arrow) => {
@@ -126,6 +135,10 @@ export function installWireArrows(canvas, { enabled, flown = () => {}, routeOf =
     clear()
     flown()
     const graph = canvas.graph
+    if (arrow.key === "light") {
+      light.run(graph, arrow.links)
+      return
+    }
     stop = fly(canvas, arrow.goals, () => {
       flash = { graph, rects: arrow.goals, colour: arrow.colour, start: performance.now() }
       canvas.setDirty(true, false)
@@ -152,17 +165,18 @@ export function installWireArrows(canvas, { enabled, flown = () => {}, routeOf =
     const arrows = current()
     if (!arrows.length) return null
     const box = element.getBoundingClientRect()
-    const corners = arrows.flatMap((arrow) => [arrow.tip, arrow.left, arrow.right])
+    const corners = arrows.flatMap((arrow) => arrow.corners)
       .map((corner) => canvas.convertOffsetToCanvas(corner))
     const xs = corners.map(([x]) => box.left + x)
     const ys = corners.map(([, y]) => box.top + y)
     return { left: Math.min(...xs), top: Math.min(...ys), right: Math.max(...xs), bottom: Math.max(...ys) }
   }
 
-  return { wanted: enabled, rest, away: () => {}, area }
+  return { wanted, rest, away: () => {}, area }
 }
 
-export function arrowsAround(graph, links, point, scale, mode, colour, routeOf = () => null) {
+export function arrowsAround(graph, links, point, scale, mode, colour, routeOf = () => null,
+  { arrows: pointing = true, light = false } = {}) {
   for (const link of [...links].reverse()) {
     const from = sourceEnd(graph, link)
     const to = targetEnd(graph, link)
@@ -177,12 +191,16 @@ export function arrowsAround(graph, links, point, scale, mode, colour, routeOf =
       target: siblings.map((other) => targetEnd(graph, other)?.rect).filter(Boolean),
     }
     const arrows = []
-    for (const [key, sign] of [["source", -1], ["target", 1]]) {
+    for (const [key, sign] of pointing ? [["source", -1], ["target", 1]] : []) {
       const near = on.along + sign * grown(GAP_PX, scale)
       const far = on.along + sign * grown(GAP_PX + LENGTH_PX, scale)
       if (far < 0 || far > line.length || !goals[key].length) continue
       const shape = triangle(pointAt(line, near), pointAt(line, far), grown(HALF_PX, scale))
       arrows.push({ key, colour: colour(link), goals: goals[key], ...shape })
+    }
+    if (light) {
+      arrows.push({ key: "light", colour: colour(link), goals: [], links: siblings,
+        ...disc(pointAt(line, on.along), grown(DISC_PX, scale)) })
     }
     return arrows
   }
@@ -268,7 +286,7 @@ function curve(a, c1, c2, b) {
   return points
 }
 
-function measure(points) {
+export function measure(points) {
   const lengths = [0]
   for (let i = 1; i < points.length; i++) lengths.push(lengths[i - 1] + distance(points[i - 1], points[i]))
   return { points, lengths, length: lengths.at(-1) }
@@ -289,7 +307,7 @@ function nearest(line, point) {
   return best
 }
 
-function pointAt(line, along) {
+export function pointAt(line, along) {
   const { points, lengths } = line
   for (let i = 1; i < points.length; i++) {
     if (lengths[i] < along) continue
@@ -307,12 +325,14 @@ function triangle(base, tip, half) {
   const length = distance(base, tip) || 1
   const nx = -(tip[1] - base[1]) / length
   const ny = (tip[0] - base[0]) / length
-  return {
-    tip,
-    left: [base[0] + nx * half, base[1] + ny * half],
-    right: [base[0] - nx * half, base[1] - ny * half],
-    middle: [(base[0] + tip[0]) / 2, (base[1] + tip[1]) / 2],
-  }
+  const left = [base[0] + nx * half, base[1] + ny * half]
+  const right = [base[0] - nx * half, base[1] - ny * half]
+  return { tip, left, right, middle: [(base[0] + tip[0]) / 2, (base[1] + tip[1]) / 2], corners: [tip, left, right] }
+}
+
+function disc(centre, radius) {
+  const [x, y] = centre
+  return { middle: centre, radius, corners: [[x - radius, y - radius], [x + radius, y + radius]] }
 }
 
 function distance(a, b) {
@@ -359,15 +379,24 @@ function paint(canvas, arrows, hot) {
   for (const arrow of arrows) {
     const lit = arrow.key === hot
     ctx.beginPath()
-    ctx.moveTo(arrow.tip[0], arrow.tip[1])
-    ctx.lineTo(arrow.left[0], arrow.left[1])
-    ctx.lineTo(arrow.right[0], arrow.right[1])
-    ctx.closePath()
+    if (arrow.radius) {
+      ctx.arc(arrow.middle[0], arrow.middle[1], arrow.radius, 0, 2 * Math.PI)
+    } else {
+      ctx.moveTo(arrow.tip[0], arrow.tip[1])
+      ctx.lineTo(arrow.left[0], arrow.left[1])
+      ctx.lineTo(arrow.right[0], arrow.right[1])
+      ctx.closePath()
+    }
     ctx.fillStyle = arrow.colour
     ctx.fill()
     ctx.lineWidth = grown(lit ? 2 : 1, ds.scale)
     ctx.strokeStyle = lit ? "#fff" : "rgba(0, 0, 0, 0.6)"
     ctx.stroke()
+    if (!arrow.radius) continue
+    ctx.beginPath()
+    ctx.arc(arrow.middle[0], arrow.middle[1], arrow.radius * DOT_SHARE, 0, 2 * Math.PI)
+    ctx.fillStyle = "#fff"
+    ctx.fill()
   }
   ctx.restore()
 }
