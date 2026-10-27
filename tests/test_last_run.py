@@ -85,6 +85,22 @@ def test_a_description_never_raises_and_never_runs_long():
     assert len(last_run.describe(["x" * 500] * 50)) <= last_run.LIMIT
 
 
+def test_a_string_is_also_kept_as_it_is_up_to_a_limit():
+    score = "X:1\nT:\nM:4/4"
+    assert last_run.texts_of([[score], [1024], []]) == [score, None, None]
+    assert last_run.texts_of([["x" * 5000]])[0] == "x" * last_run.TEXT + "..."
+    assert last_run.texts_of([[1024], [Tensor(1, 2)]]) is None
+    assert last_run.texts_of([["a", "b"]]) is None, "a node run over a list has no one text"
+
+
+def test_a_string_output_keeps_its_text_beside_its_line():
+    runs = running()
+    last_run.report(FakeExecutionList(), "8", entry(["X:1\nT:"]), runs)
+    assert kept(runs)["8"]["texts"] == ["X:1\nT:"]
+    last_run.report(FakeExecutionList(), "1", entry([1]), runs)
+    assert "texts" not in kept(runs)["1"]
+
+
 def test_each_output_slot_gets_one_line():
     outputs = [[Tensor(1, 8, 8, 3)], [512, 768], []]
     assert last_run.describe_outputs(outputs) == [
@@ -212,6 +228,41 @@ def test_a_cache_that_cannot_be_read_does_not_stop_the_run():
     assert Wrapped().updated == []
 
 
+class FakeKeys:
+    """A cache key set: the key of node 8 is its class and its seed, and node 1 has none."""
+
+    def __init__(self, seed):
+        self.seed = seed
+
+    def get_data_key(self, node_id):
+        return frozenset({("VAEDecode", self.seed)}) if node_id == "8" else None
+
+
+def keyed(seed):
+    """A FakeExecutionList whose cache files node 8 under a key with ``seed`` in it."""
+    execution_list = FakeExecutionList()
+    execution_list.output_cache.cache_key_set = FakeKeys(seed)
+    return execution_list
+
+
+def test_the_key_a_result_is_filed_under_is_kept_as_a_fingerprint():
+    runs = running()
+    last_run.report(keyed(7), "8", entry([1]), runs)
+    first = runs.snapshot("wf")["8"]["key"]
+    last_run.report(keyed(7), "8", entry([1]), runs)
+    assert runs.snapshot("wf")["8"]["key"] == first
+    last_run.report(keyed(8), "8", entry([1]), runs)
+    assert runs.snapshot("wf")["8"]["key"] != first
+    last_run.report(keyed(7), "1", entry([1]), runs)
+    assert "key" not in runs.snapshot("wf")["1"]
+
+
+def test_a_key_with_a_nan_in_it_matches_no_later_one():
+    nan = float("nan")
+    assert last_run.fingerprint(FakeKeys(nan), "8") != last_run.fingerprint(FakeKeys(float("nan")), "8")
+    assert last_run.fingerprint(None, "8") is None
+
+
 def test_the_running_workflow_is_known_exactly_while_its_prompt_runs():
     runs = last_run.Runs()
     seen = []
@@ -319,6 +370,14 @@ def test_the_route_answers_with_one_workflow_and_nothing_without_one():
         "workflow": "wf", "nodes": {"1": {"type": "EmptyImage", "outputs": ["x"], "at": 1}}}
     assert last_run.answer({}, runs) == {"workflow": "", "nodes": {}}
     assert last_run.answer({"workflow": "other"}, runs)["nodes"] == {}
+
+
+def test_the_fingerprints_stay_on_the_server():
+    runs = running()
+    runs.record("1", {"type": "EmptyImage", "outputs": ["x"], "at": 1, "key": 12345})
+    assert last_run.answer({"workflow": "wf"}, runs)["nodes"] == {
+        "1": {"type": "EmptyImage", "outputs": ["x"], "at": 1}}
+    assert runs.snapshot("wf")["1"]["key"] == 12345
 
 
 class FakeRoutes:

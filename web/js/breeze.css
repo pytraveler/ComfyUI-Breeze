@@ -61,3 +61,17 @@
 .breeze-forecast-tip .bwt-dot {
   box-sizing: border-box;
 }
+
+.breeze-compass-tip .bct-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.breeze-compass-tip .bwt-type ~ .bct-name {
+  padding-left: 14px;
+}
+
+.breeze-compass-tip .bct-name + .bwt-type {
+  margin-top: 6px;
+}

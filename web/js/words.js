@@ -32,6 +32,8 @@ export const ENGLISH = {
   durationHours: "{h} h {m} min",
   compassShow: "Show the compass",
   compassHide: "Hide the compass",
+  compassLoose: "Outside groups",
+  compassGroup: "Untitled group",
 }
 
 export async function fetchTranslations(fetchApi) {

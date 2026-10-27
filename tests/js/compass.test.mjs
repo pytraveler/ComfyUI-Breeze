@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 
-import { aim, arrowAt, canvasRect, clearArea, gather, inset, labelOf, layout, seenIn } from "../../web/js/compass.js"
+import { aim, arrowAt, canvasRect, clearArea, gather, inset, labelOf, layout, noteOf, seenIn } from "../../web/js/compass.js"
 
 const SAFE = [12, 12, 1000, 600]
 const AT_ONE = { offset: [0, 0], scale: 1 }
@@ -140,4 +140,43 @@ test("a click finds the arrow under it, label included", () => {
   assert.equal(arrowAt(arrows, [130, 110]), arrows[0])
   assert.equal(arrowAt(arrows, [562, 122]), arrows[1])
   assert.equal(arrowAt(arrows, [300, 110]), null)
+})
+
+test("an arrow knows the names of its nodes, top to bottom, under the name of their group", () => {
+  const groups = [{ rect: [2000, 0, 900, 600], title: "Upscale", colour: "#3f789e" }]
+  const found = gather([item(2100, 300, "Save Image"), item(2100, 100, "Upscale Image")], groups, [0, 0, 1000, 600], 150)
+  assert.deepEqual(found[0].sections, [{ title: "Upscale", group: true, colour: "#3f789e", names: ["Upscale Image", "Save Image"] }])
+  assert.deepEqual(noteOf(found[0]), {
+    sections: [{ title: "Upscale", group: true, colour: "#3f789e", names: ["Upscale Image", "Save Image"] }], more: 0,
+  })
+})
+
+test("loose nodes alone are listed without a heading, and with groups under one of their own", () => {
+  const loose = gather([item(2000, 0, "KSampler"), item(2300, 0, "VAE Decode")], [], [0, 0, 1000, 600], 150)[0]
+  assert.deepEqual(noteOf(loose).sections, [{ title: null, group: false, colour: null, names: ["KSampler", "VAE Decode"] }])
+  const goals = (x, y) => ({ goals: [[x, y, 200, 100]], rects: [[x, y, 200, 100]] })
+  const clusters = [
+    { count: 1, titles: ["Loaders"], loose: 0, colour: null, ...goals(3000, 250),
+      sections: [{ title: "Loaders", group: true, colour: null, names: ["Load Checkpoint"] }] },
+    { count: 1, titles: ["Save Image"], loose: 0, colour: null, ...goals(3000, 300),
+      sections: [{ title: "", group: false, colour: null, names: ["Save Image"] }] },
+  ]
+  const arrows = layout(clusters, AT_ONE, SAFE, width)
+  assert.equal(arrows.length, 1)
+  assert.deepEqual(noteOf(arrows[0].cluster).sections, [
+    { title: "Loaders", group: true, colour: null, names: ["Load Checkpoint"] },
+    { title: "", group: false, colour: null, names: ["Save Image"] },
+  ], "an empty heading reads as Outside groups")
+})
+
+test("a long list is cut short, and the same name twice is counted", () => {
+  const names = ["CLIP Text Encode", "CLIP Text Encode", ...Array.from({ length: 20 }, (_, i) => "Node " + i)]
+  const note = noteOf({ sections: [{ title: "", group: false, colour: null, names }] }, 5)
+  assert.deepEqual(note.sections[0].names, ["CLIP Text Encode " + String.fromCharCode(0xd7) + "2", "Node 0", "Node 1", "Node 2", "Node 3"])
+  assert.equal(note.more, 16)
+  const two = noteOf({ sections: [
+    { title: "Loaders", group: true, colour: null, names: ["A", "B"] },
+    { title: "", group: false, colour: null, names: ["C"] },
+  ] }, 2)
+  assert.deepEqual(two, { sections: [{ title: "Loaders", group: true, colour: null, names: ["A", "B"] }], more: 1 })
 })

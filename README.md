@@ -2,8 +2,8 @@
 
 Frontend extensions that make a ComfyUI graph easier to read and to work in.
 They answer the questions a graph raises while you look at it: what feeds this
-node, what this wire carries, where the nodes went when the screen is empty,
-what the next run will compute again.
+node, what this wire carries, what this input gets, where the nodes went when
+the screen is empty, what the next run will compute again.
 
 [Russian version](README_RU.md) | [Changelog](CHANGELOG.md)
 
@@ -34,6 +34,17 @@ trunk.*
   along it in the last run: `1x1536x1024x3 float32` for an image, the head of
   the text for a string, `latent 1x16x128x128 float32`, `ModelPatcher: Flux`.
   Where wires overlap, each one is described.
+- **What an input gets.** A widget with a wire into it is greyed out down to
+  its name, and the row now says what comes in and from where: `1024` and an
+  arrow back to Resolution Selector. A Primitive, or a node whose one setting is
+  what it hands on, such as a seed node, gives its value as it is now, run or
+  not. Any other node gives what it handed on in the last run, in italics
+  once its inputs have changed since, so the value no longer stands. Before
+  the first run the row names the node the wire comes from. Where the wire
+  hides a box of text, a multiline prompt's, the box shows the text that
+  comes in, line by line. A row too narrow for both keeps the name of the
+  node and cuts the value. On Nodes 2.0 the same text stands in the row of
+  the input, on one line.
 - **Where a wire leads.** Two arrows in the wire's colour appear on the wire
   beside the resting pointer, one pointing back along it to the output it
   leaves, one ahead to the input it reaches, and a click on one carries the
@@ -58,7 +69,10 @@ trunk.*
   there are, or with the node's own title when it stands alone. A click
   carries the view there, as the arrows on a wire do. Arrows that would
   cover each other become one, which frames everything they pointed to, and
-  all of them keep clear of the panels and toolbars over the canvas. Under
+  all of them keep clear of the panels and toolbars over the canvas. Rest
+  the pointer on an arrow for a moment and a list names the nodes it points
+  to, under the names of their groups; it can be turned off under Settings >
+  Breeze > Compass. Under
   Settings > Breeze > Compass they can stay all the time instead, faded
   while nodes are in view. A button with a compass on it, next to the
   minimap's in the toolbar at the bottom right of the canvas, turns them off
@@ -104,6 +118,18 @@ the same type, and only on the top level of a workflow: inside a subgraph the
 tooltip gives the type and the ends, not yet the value. A prompt queued through
 the HTTP API carries no workflow and leaves nothing behind.
 
+A string is also kept as it is, line breaks and all, up to 2000 characters,
+for the boxes of text on the inputs it feeds.
+
+With each line the server keeps a fingerprint of the key ComfyUI's cache filed
+the result under. The forecast below builds the keys the graph on screen would
+have, and a node whose key is still the same would hand on the same again,
+whether the cache still holds the result or not; one whose key has changed is
+shown in italics on the inputs it feeds. The forecast is asked for after every
+edit that changes the prompt, the way the forecast's marks that stay on the
+nodes are, and while none has come back the value from the last run is shown
+dimmed.
+
 To read the outputs the pack wraps `PromptExecutor.execute_async`, to learn
 which workflow is running, and three methods of `ExecutionList`, one of them
 to time each node. The originals run first and unchanged; a description that
@@ -132,7 +158,8 @@ none.
 ### Not yet supported
 
 - Inside a subgraph the forecast marks nothing; on the top level a subgraph's
-  node takes the mark of what is inside it.
+  node takes the mark of what is inside it. The inputs there show the values
+  of Primitives and seed nodes, and only the name of any other node.
 - A trunk only forms for inputs ahead of the output, on the left of their
   nodes; wires that run backwards, or into inputs too close to the output to
   gain anything, are drawn as before.

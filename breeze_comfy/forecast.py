@@ -21,6 +21,11 @@ forecast at a time, so the server keeps answering meanwhile.
 The cache can change before the prompt runs -- a RAM-pressure cache drops
 entries, a prompt queued from elsewhere adds them -- so the answer is a
 forecast and not a promise.
+
+The same keys also tell whether what a node handed on in the last run still
+stands: last_run keeps a fingerprint of the key each node had then, and a
+node whose key is the same now would hand on the same, whether the cache
+still holds it or not.
 """
 
 from __future__ import annotations
@@ -31,6 +36,8 @@ import copy
 import logging
 import threading
 from collections.abc import Mapping, Sequence
+
+from .last_run import fingerprint
 
 ROUTE = "/breeze/forecast"
 """The route web/js/forecast.js posts to; ComfyUI also serves it under /api."""
@@ -162,6 +169,22 @@ def timed(states, prompt, kept) -> dict:
     return found
 
 
+def unchanged(keys, prompt, kept) -> dict:
+    """For each node last_run kept a key for, whether ``keys`` give it the same one now.
+
+    ``keys`` are fingerprints, node id -> number, of the keys the prompt
+    would have; a node missing there will not keep its key. A node of
+    another class than the one that ran under its id is not the same node.
+    """
+    same = {}
+    for node_id, last in kept.items():
+        if node_id not in prompt or last.get("key") is None:
+            continue
+        same[node_id] = (last["key"] == keys.get(node_id)
+                         and last.get("type") == prompt[node_id].get("class_type"))
+    return same
+
+
 def reason(error) -> str:
     """One line for the error validate_prompt reports about a prompt it refuses."""
     if not isinstance(error, dict):
@@ -188,7 +211,9 @@ def quiet():
 
 
 async def forecast(prompt, executor, server=None, moving=()) -> dict:
-    """``{"nodes": {node id: state}}`` for ``prompt``, or ``{"error": line}`` for one ComfyUI would refuse.
+    """``{"nodes": {node id: state}, "keys": {node id: fingerprint}}`` for ``prompt``.
+
+    For a prompt ComfyUI would refuse it is ``{"error": line}`` instead.
 
     ``executor`` is the PromptExecutor that ran the last prompt, None before
     the first, when the cache is empty. Its output cache is read and never
@@ -196,7 +221,8 @@ async def forecast(prompt, executor, server=None, moving=()) -> dict:
 
     ``moving`` names nodes the browser will change before it queues the
     prompt -- a seed set to randomize when ComfyUI applies that before the
-    run -- so neither they nor anything below them can come from the cache.
+    run -- so neither they nor anything below them can come from the cache,
+    and none of them has a key yet.
     """
     from comfy_execution.caching import CacheKeySetInputSignature
     from comfy_execution.graph import DynamicPrompt, TopologicalSort
@@ -219,7 +245,8 @@ async def forecast(prompt, executor, server=None, moving=()) -> dict:
     store = getattr(cache, "cache", None)
     cached = {node_id for node_id in ids
               if isinstance(store, dict) and keys.get_data_key(node_id) in store}
-    cached -= downstream(prompt, moving)
+    shifting = downstream(prompt, moving)
+    cached -= shifting
     always = {node_id for node_id in ids if unstable(changed.is_changed.get(node_id, False))}
     sort = TopologicalSort(dynprompt)
 
@@ -227,7 +254,9 @@ async def forecast(prompt, executor, server=None, moving=()) -> dict:
         info = sort.get_input_info(node_id, name)[2]
         return isinstance(info, dict) and bool(info.get("lazy"))
 
-    return {"nodes": plan(prompt, valid[2], cached, always, lazy)}
+    found = {node_id: fingerprint(keys, node_id) for node_id in ids if node_id not in shifting}
+    return {"nodes": plan(prompt, valid[2], cached, always, lazy),
+            "keys": {node_id: key for node_id, key in found.items() if key is not None}}
 
 
 def well_formed(prompt) -> bool:
@@ -239,6 +268,10 @@ def well_formed(prompt) -> bool:
 
 async def respond(body, runs, compute, lock) -> dict:
     """The body of a ROUTE response to the JSON the browser posted.
+
+    It has the state of each node, with the seconds it took last time, and,
+    under ``same``, whether what each node handed on in the last run of the
+    workflow still stands.
 
     ``compute(prompt, executor, moving)`` is forecast() with the server bound,
     run on a thread of its own and under ``lock``, so forecasts never overlap.
@@ -260,7 +293,8 @@ async def respond(body, runs, compute, lock) -> dict:
     if "error" in found:
         return {"workflow": workflow, "error": str(found["error"])}
     kept = runs.snapshot(workflow) if workflow else {}
-    return {"workflow": workflow, "nodes": timed(found["nodes"], prompt, kept)}
+    return {"workflow": workflow, "nodes": timed(found["nodes"], prompt, kept),
+            "same": unchanged(found.get("keys") or {}, prompt, kept)}
 
 
 def add_route(server, runs) -> None:

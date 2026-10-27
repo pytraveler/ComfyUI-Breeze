@@ -231,15 +231,30 @@ def test_the_forecast_looks_the_validated_prompt_up_in_the_executors_cache(monke
     prompt["6"] = node("Save", images=["5", 0])
     executor = executor_with(*keys_of(chain()))
     found = asyncio.run(forecast.forecast(prompt, executor))
-    assert found == {"nodes": {"1": "cached", "2": "cached", "3": "run", "4": "run",
-                               "5": "always", "6": "run"}}
+    assert found["nodes"] == {"1": "cached", "2": "cached", "3": "run", "4": "run",
+                              "5": "always", "6": "run"}
     assert prompt["2"]["inputs"]["text"] == {"__value__": "a cat"}
 
 
 def test_a_node_the_browser_changes_before_the_run_is_not_taken_from_the_cache(monkeypatch):
     comfyui(monkeypatch)
     found = asyncio.run(forecast.forecast(chain(), executor_with(*keys_of(chain())), moving=["3"]))
-    assert found == {"nodes": {"1": "cached", "2": "cached", "3": "run", "4": "run"}}
+    assert found["nodes"] == {"1": "cached", "2": "cached", "3": "run", "4": "run"}
+    assert sorted(found["keys"]) == ["1", "2", "9"], "what moves has no key yet"
+
+
+def test_every_node_gets_the_fingerprint_of_its_key_cached_or_not(monkeypatch):
+    comfyui(monkeypatch)
+    before = asyncio.run(forecast.forecast(chain(), None))["keys"]
+    again = asyncio.run(forecast.forecast(chain(), executor_with(*keys_of(chain()))))["keys"]
+    assert before == again, "the cache holding a key or not leaves the key as it is"
+    prompt = chain()
+    prompt["3"]["inputs"]["seed"] = 8
+    prompt["5"] = node("Clock")
+    prompt["6"] = node("Save", images=["5", 0])
+    changed = asyncio.run(forecast.forecast(prompt, None))["keys"]
+    assert [changed[i] == before[i] for i in ("1", "2", "3", "4", "9")] == [True, True, False, False, True]
+    assert changed["5"] != asyncio.run(forecast.forecast(prompt, None))["keys"]["5"]
 
 
 def test_before_any_run_everything_is_computed(monkeypatch):
@@ -281,9 +296,26 @@ def test_the_route_answers_with_the_states_and_the_seconds_kept():
 
     answer = respond({"workflow": "wf", "prompt": chain(), "moving": ["3", 4]}, runs, compute)
     assert answer == {"workflow": "wf", "nodes": {"3": {"state": "run", "seconds": 12.5},
-                                                  "4": {"state": "cached"}}}
+                                                  "4": {"state": "cached"}}, "same": {}}
     respond({"prompt": chain(), "moving": "3"}, runs, compute)
     assert asked == [("the executor", ["3"]), ("the executor", [])]
+
+
+def test_the_route_says_whose_last_run_still_stands():
+    runs = last_run.Runs()
+    runs.begin("wf")
+    runs.record("1", {"type": "Loader", "outputs": []})
+    runs.record("2", {"type": "Other", "outputs": [], "key": 2})
+    runs.record("3", {"type": "Sampler", "outputs": [], "key": 3})
+    runs.record("4", {"type": "Save", "outputs": [], "key": 7})
+    runs.record("5", {"type": "Gone", "outputs": [], "key": 5})
+    runs.end()
+
+    async def compute(prompt, executor, moving):
+        return {"nodes": {}, "keys": {"1": 1, "2": 2, "3": 3, "4": 4}}
+
+    assert respond({"workflow": "wf", "prompt": chain()}, runs, compute)["same"] == {
+        "2": False, "3": True, "4": False}
 
 
 def test_the_route_turns_anything_that_goes_wrong_into_an_error():

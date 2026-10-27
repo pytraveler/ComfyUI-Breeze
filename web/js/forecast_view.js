@@ -23,27 +23,20 @@ const UNIT_STEP = 10
 
 const TAG_BACKGROUND = "rgba(20, 20, 20, 0.85)"
 
-const SETTLE_MS = 400
-const REFRESH_MS = 30000
-
 const TIP_GAP = 8
 const MARGIN = 8
 
 const SETTLE_STEP_MS = 150
 const SETTLE_TRIES = 10
 
-export function installForecast(canvas, { mode, glow = () => 0, say = english, isRoot, workflow, build, send, listen, redraw }) {
+export function installForecast(canvas, { mode, glow = () => 0, say = english, isRoot, build, send, feed, redraw }) {
   const proto = Object.getPrototypeOf(canvas)
   const { draw, drawNode } = proto
-  const state = {
-    hover: null, button: null, pressed: null, ticket: 0,
-    tags: null, tagsFor: undefined, asked: undefined, key: null, stale: true, queued: 0, mode: null, asking: 0,
-  }
+  const state = { hover: null, button: null, pressed: null, ticket: 0, result: null, tags: null }
   const frame = { shown: null, outline: false, glow: 0, unit: 1 }
   const adopted = new WeakSet()
   const sheet = styleSheet()
   let styled = null
-  let timer = 0
   let tip = null
 
   const foundFor = (node) => frame.shown?.get(String(node.id)) ?? null
@@ -69,15 +62,13 @@ export function installForecast(canvas, { mode, glow = () => 0, say = english, i
 
   proto.draw = function (...args) {
     if (this === canvas) {
-      const current = mode()
-      if (current !== state.mode) {
-        state.mode = current
-        if (current === "always") state.stale = true
+      feed.poll()
+      const result = mode() === "always" ? feed.result() : null
+      if (result !== state.result) {
+        state.result = result
+        state.tags = result ? onCanvas(result.nodes) : null
       }
-      const due = state.stale || state.asked !== workflow()
-      if (current === "always" && due && !timer && !state.asking && !state.queued && !document.hidden) schedule(0)
-      const tags = current === "always" && !state.queued && state.tagsFor === workflow() ? state.tags : null
-      frame.shown = isRoot() ? state.hover ?? tags : null
+      frame.shown = isRoot() ? state.hover ?? state.tags : null
       frame.outline = Boolean(state.hover)
       frame.glow = glow()
       frame.unit = 1 / Math.min(1, Math.max(SCALE_FLOOR, this.ds.scale))
@@ -96,33 +87,6 @@ export function installForecast(canvas, { mode, glow = () => 0, say = english, i
     const found = this === canvas && !vueNodes() ? foundFor(node) : null
     if (found) paint(this, node, ctx, found, frame, say)
     return result
-  }
-
-  function schedule(delay = SETTLE_MS) {
-    clearTimeout(timer)
-    timer = setTimeout(refresh, delay)
-  }
-
-  async function refresh() {
-    timer = 0
-    if (mode() !== "always" || document.hidden || state.queued) return
-    state.asking++
-    try {
-      const asked = workflow()
-      state.asked = asked
-      const request = await build().catch(() => null)
-      const key = request ? JSON.stringify(request) : ""
-      if (key === state.key && !state.stale) return
-      state.key = key
-      state.stale = false
-      const result = request ? await send(request).catch(() => null) : null
-      if (key !== state.key) return
-      state.tags = result?.nodes ? onCanvas(result.nodes) : null
-      state.tagsFor = asked
-      redraw()
-    } finally {
-      state.asking--
-    }
   }
 
   const enter = async (button) => {
@@ -170,25 +134,6 @@ export function installForecast(canvas, { mode, glow = () => 0, say = english, i
     state.pressed = state.button
     leave()
   }, true)
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) return
-    state.stale = true
-    redraw()
-  })
-  listen("graphChanged", () => {
-    if (mode() === "always") schedule()
-  })
-  listen("status", (event) => {
-    const remaining = event?.detail?.exec_info?.queue_remaining
-    if (typeof remaining !== "number" || remaining === state.queued) return
-    state.queued = remaining
-    if (!remaining) state.stale = true
-    redraw()
-  })
-  setInterval(() => {
-    state.stale = true
-    if (mode() === "always") redraw()
-  }, REFRESH_MS)
 
   return { showing: () => Boolean(state.hover) }
 }

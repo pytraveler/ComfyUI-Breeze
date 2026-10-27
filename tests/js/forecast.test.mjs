@@ -15,13 +15,14 @@ function server(body, ok = true) {
 
 const REQUEST = { workflow: "wf", prompt: { "3": { class_type: "KSampler", inputs: {} } }, moving: [] }
 
-test("the prompt is posted as JSON, and the states come back", async () => {
+test("the prompt is posted as JSON, and the states come back with what still stands", async () => {
   const nodes = { "3": { state: "run", seconds: 12.5 } }
-  const { asked, fetchApi } = server({ workflow: "wf", nodes })
-  assert.deepEqual(await fetchForecast(fetchApi, REQUEST), { nodes })
+  const { asked, fetchApi } = server({ workflow: "wf", nodes, same: { "3": false } })
+  assert.deepEqual(await fetchForecast(fetchApi, REQUEST), { nodes, same: { "3": false } })
   assert.equal(asked[0].route, ROUTE)
   assert.equal(asked[0].options.method, "POST")
   assert.deepEqual(JSON.parse(asked[0].options.body), REQUEST)
+  assert.deepEqual(await fetchForecast(server({ workflow: "wf", nodes }).fetchApi, REQUEST), { nodes, same: {} })
 })
 
 test("a refusal by the server is passed on as its reason", async () => {

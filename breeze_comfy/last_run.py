@@ -1,4 +1,4 @@
-"""What every node handed on in the last run of each workflow, for the wire tooltip.
+"""What every node handed on in the last run of each workflow, for the wire tooltip and the connected inputs.
 
 ComfyUI tells the browser about a node's result only when the node has
 something to show, a saved image or a preview. A wire between any other two
@@ -30,9 +30,12 @@ Four methods are wrapped, and each original runs first and unchanged:
   ExecutionList.is_cached uses, which touches no cache bookkeeping.
 
 Only the description is kept: the shape and dtype of a tensor, the head of a
-string, a number, and how long the node took when it was computed rather than
-taken from the cache. Nothing here holds a reference to a value, so the cache frees
-what it frees exactly as it would without this module, and a description that
+string, a number, how long the node took when it was computed rather than
+taken from the cache, and a fingerprint of the key the cache filed the result
+under, which breeze_comfy.forecast compares with the key the node would have
+now. A string is also kept as it is, up to TEXT characters, for an input whose
+box of text the frontend hides. Nothing bigger than that is ever held, so the
+cache frees what it frees exactly as it would without this module, and a description that
 fails is dropped rather than raised into the run that produced the value. The
 descriptions last until ComfyUI restarts, so a reloaded page, or a second tab
 with the same workflow, sees what the first one would.
@@ -61,6 +64,10 @@ LIMIT = 96
 
 QUOTED = 60
 """Characters of a string shown before it is cut."""
+
+TEXT = 2000
+"""Characters of a string also kept as they are, line breaks and all, for an input
+whose box of text the frontend hides once a wire feeds it."""
 
 LISTED = 4
 """Keys of a dict, or items of a list of plain values, shown before the rest are elided."""
@@ -200,6 +207,21 @@ def describe_outputs(outputs) -> list:
     return found
 
 
+def texts_of(outputs):
+    """The head of each output that is one string, None for any other; None when there is none.
+
+    A string longer than TEXT is cut there and the cut marked.
+    """
+    found = []
+    for values in outputs:
+        text = values[0] if isinstance(values, (list, tuple)) and len(values) == 1 else None
+        if not isinstance(text, str):
+            found.append(None)
+            continue
+        found.append(text if len(text) <= TEXT else text[:TEXT] + "...")
+    return found if any(text is not None for text in found) else None
+
+
 def workflow_of(extra_data):
     """The id of the workflow a prompt was queued from, or None."""
     try:
@@ -309,14 +331,38 @@ def report(execution_list, node_id, entry, runs: Runs) -> None:
     if node is None:
         return
     seconds = runs.took(node_id)
+    cache = execution_list.output_cache
     found = {
         "type": node.get("class_type"),
         "outputs": describe_outputs(outputs),
         "at": int(time.time() * 1000),
     }
-    if seconds is not None and execution_list.output_cache.get_local(node_id) is not entry:
+    if seconds is not None and cache.get_local(node_id) is not entry:
         found["seconds"] = round(seconds, 3)
+    texts = texts_of(outputs)
+    if texts:
+        found["texts"] = texts
+    key = fingerprint(getattr(cache, "cache_key_set", None), node_id)
+    if key is not None:
+        found["key"] = key
     runs.record(str(node_id), found)
+
+
+def fingerprint(keys, node_id):
+    """A number that stands for the key ``keys`` file ``node_id`` under, or None.
+
+    Two keys the cache would take for the same entry give the same number
+    within one process, which is as long as anything here is kept. The key
+    itself is not kept: it holds the inputs of every node upstream. A key
+    with something the cache cannot compare in it, a NaN from IS_CHANGED
+    among them, gives a number no later key matches, as the cache never
+    matches it either.
+    """
+    try:
+        key = keys.get_data_key(node_id)
+        return None if key is None else hash(key)
+    except Exception:
+        return None
 
 
 def report_cached(execution_list, runs: Runs) -> None:
@@ -399,9 +445,15 @@ def marked(wrapper, original):
 
 
 def answer(query, runs: Runs) -> dict:
-    """The body of a ROUTE response for the request's query parameters."""
+    """The body of a ROUTE response for the request's query parameters.
+
+    The fingerprints stay on the server: outside this process they mean nothing.
+    """
     workflow = query.get("workflow") or ""
-    return {"workflow": workflow, "nodes": runs.snapshot(workflow) if workflow else {}}
+    nodes = runs.snapshot(workflow) if workflow else {}
+    return {"workflow": workflow, "nodes": {
+        node_id: {name: value for name, value in entry.items() if name != "key"}
+        for node_id, entry in nodes.items()}}
 
 
 def add_route(server, runs: Runs) -> None:

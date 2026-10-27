@@ -3,7 +3,9 @@ import { api } from "../../scripts/api.js"
 import { installCompass } from "./compass.js"
 import { COMMAND, installCompassButton } from "./compass_button.js"
 import { fetchForecast, movingNodes } from "./forecast.js"
+import { installForecastFeed } from "./forecast_feed.js"
 import { installForecast } from "./forecast_view.js"
+import { installInputValues } from "./input_values.js"
 import { installLineage } from "./lineage.js"
 import { fetchOutputs, wireValue } from "./last_run.js"
 import { COMPASS, definitions, reader } from "./settings.js"
@@ -48,6 +50,31 @@ app.registerExtension({
       translations = body
     })
     const say = speaker(() => wordsFor(translations, settings.locale()))
+    const workflow = () => app.rootGraph?.id ?? ""
+    const outputs = () => fetchOutputs((route) => api.fetchApi(route), app.rootGraph?.id)
+    const build = async () => {
+      const { output } = await app.graphToPrompt()
+      const root = app.rootGraph
+      return { workflow: root?.id ?? "", prompt: output, moving: movingNodes(root, settings.controlBefore()) }
+    }
+    const send = (request) => fetchForecast((route, options) => api.fetchApi(route, options), request)
+    const feed = installForecastFeed({
+      wanted: () => settings.forecast() === "always" || settings.inputs(),
+      workflow,
+      build,
+      send,
+      listen: (type, handler) => api.addEventListener(type, handler),
+      redraw,
+    })
+    installInputValues(canvas, {
+      enabled: settings.inputs,
+      feed,
+      load: outputs,
+      root: () => app.rootGraph,
+      workflow,
+      before: settings.controlBefore,
+      redraw,
+    })
     const lineage = installLineage(canvas, {
       enabled: () => settings.lineage() && !forecast.showing(),
       fade: settings.fade,
@@ -57,9 +84,7 @@ app.registerExtension({
     const trunks = installTrunks(canvas, { enabled: settings.trunks, alpha: lineage.alpha })
     const tip = installWireTip(canvas, {
       enabled: settings.tip,
-      load: () => canvas.graph === app.rootGraph
-        ? fetchOutputs((route) => api.fetchApi(route), app.rootGraph?.id)
-        : Promise.resolve(null),
+      load: () => canvas.graph === app.rootGraph ? outputs() : Promise.resolve(null),
       valueOf: (link, outputs) => wireValue(outputs, app.rootGraph, canvas.graph, link, Date.now(), say),
       say,
       avoid: () => arrows.area(),
@@ -70,7 +95,7 @@ app.registerExtension({
       routeOf: trunks.routeOf,
     })
     const hover = watchWires(canvas, [arrows, tip])
-    installCompass(canvas, { mode: settings.compass })
+    installCompass(canvas, { mode: settings.compass, note: settings.compassNote, say })
     compassButton = installCompassButton({
       mode: settings.compass,
       set: (value) => app.extensionManager.setting.set(COMPASS, value),
@@ -81,14 +106,9 @@ app.registerExtension({
       glow: settings.glow,
       say,
       isRoot: () => canvas.graph === app.rootGraph,
-      workflow: () => app.rootGraph?.id ?? "",
-      build: async () => {
-        const { output } = await app.graphToPrompt()
-        const root = app.rootGraph
-        return { workflow: root?.id ?? "", prompt: output, moving: movingNodes(root, settings.controlBefore()) }
-      },
-      send: (request) => fetchForecast((route, options) => api.fetchApi(route, options), request),
-      listen: (type, handler) => api.addEventListener(type, handler),
+      build,
+      send,
+      feed,
       redraw,
     })
   },

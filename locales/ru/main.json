@@ -3,6 +3,7 @@
     "Breeze": "Breeze",
     "Lineage": "Цепочка зависимостей",
     "Wires": "Провода",
+    "Inputs": "Входы",
     "Forecast": "Прогноз кэша",
     "Compass": "Компас"
   },
@@ -35,6 +36,8 @@
     "durationMinutes": "{m} мин {s} с",
     "durationHours": "{h} ч {m} мин",
     "compassShow": "Показать компас",
-    "compassHide": "Скрыть компас"
+    "compassHide": "Скрыть компас",
+    "compassLoose": "Вне групп",
+    "compassGroup": "Группа без имени"
   }
 }

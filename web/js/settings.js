@@ -7,8 +7,10 @@ export const BOTH = "Breeze.Lineage.BothColor"
 export const TIP = "Breeze.WireTip.Enabled"
 export const ARROWS = "Breeze.WireArrows.Enabled"
 export const TRUNKS = "Breeze.WireTrunks.Enabled"
+export const INPUTS = "Breeze.InputValues.Enabled"
 export const FORECAST = "Breeze.Forecast.Mode"
 export const COMPASS = "Breeze.Compass.Mode"
+export const COMPASS_NOTE = "Breeze.Compass.Tooltip"
 
 export const LOCALE = "Comfy.Locale"
 export const CONTROL = "Comfy.WidgetControlMode"
@@ -23,8 +25,10 @@ export const DEFAULTS = {
   [TIP]: true,
   [ARROWS]: true,
   [TRUNKS]: true,
+  [INPUTS]: true,
   [FORECAST]: "run",
   [COMPASS]: "empty",
+  [COMPASS_NOTE]: true,
 }
 
 export const FORECAST_MODES = ["run", "always", "off"]
@@ -121,6 +125,15 @@ export function definitions(redraw) {
       onChange: redraw,
     },
     {
+      id: INPUTS,
+      category: ["Breeze", "Inputs", "Values"],
+      name: "Show what a connected input gets, and from where",
+      tooltip: "A primitive's value is shown as it is now, any other node's as it was in the last run, in italics once that node's inputs have changed since.",
+      type: "boolean",
+      defaultValue: DEFAULTS[INPUTS],
+      onChange: redraw,
+    },
+    {
       id: FORECAST,
       category: ["Breeze", "Forecast", "Mode"],
       name: "Show what the next run computes again",
@@ -148,6 +161,14 @@ export function definitions(redraw) {
       defaultValue: DEFAULTS[COMPASS],
       onChange: redraw,
     },
+    {
+      id: COMPASS_NOTE,
+      category: ["Breeze", "Compass", "Tooltip"],
+      name: "Name the nodes an arrow points to when the pointer rests on it",
+      tooltip: "After a moment on an arrow, a list of the nodes a click on it brings into view, under the names of their groups.",
+      type: "boolean",
+      defaultValue: DEFAULTS[COMPASS_NOTE],
+    },
   ]
   return all.map((item, index) => ({ ...item, sortOrder: all.length - index }))
 }
@@ -174,6 +195,7 @@ export function reader(get) {
     tip: () => Boolean(read(TIP)),
     arrows: () => Boolean(read(ARROWS)),
     trunks: () => Boolean(read(TRUNKS)),
+    inputs: () => Boolean(read(INPUTS)),
     forecast: () => {
       const value = read(FORECAST)
       return FORECAST_MODES.includes(value) ? value : DEFAULTS[FORECAST]
@@ -182,6 +204,7 @@ export function reader(get) {
       const value = read(COMPASS)
       return COMPASS_MODES.includes(value) ? value : DEFAULTS[COMPASS]
     },
+    compassNote: () => Boolean(read(COMPASS_NOTE)),
     controlBefore: () => read(CONTROL) === "before",
     locale: () => {
       const value = read(LOCALE)

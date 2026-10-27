@@ -20,7 +20,8 @@ export async function fetchForecast(fetchApi, request) {
     const body = await response.json()
     if (typeof body?.error === "string") return { error: body.error }
     if (!body?.nodes || typeof body.nodes !== "object") return null
-    return { nodes: body.nodes }
+    const same = body.same && typeof body.same === "object" ? body.same : {}
+    return { nodes: body.nodes, same }
   } catch {
     return null
   }
@@ -28,13 +29,12 @@ export async function fetchForecast(fetchApi, request) {
 
 export function movingNodes(graph, before) {
   if (!before) return []
-  const moving = []
-  for (const node of graph?.nodes ?? []) {
-    const moves = (node.widgets ?? []).some((widget) => (widget.linkedWidgets ?? []).some(
-      (linked) => CONTROL.test(String(linked?.name ?? "")) && linked.value !== "fixed"))
-    if (moves) moving.push(String(node.id))
-  }
-  return moving
+  return (graph?.nodes ?? []).filter((node) => moves(node, before)).map((node) => String(node.id))
+}
+
+export function moves(node, before) {
+  return Boolean(before) && (node?.widgets ?? []).some((widget) => (widget.linkedWidgets ?? []).some(
+    (linked) => CONTROL.test(String(linked?.name ?? "")) && linked.value !== "fixed"))
 }
 
 export function onCanvas(nodes) {

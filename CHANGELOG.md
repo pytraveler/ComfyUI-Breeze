@@ -10,6 +10,27 @@ that disagrees with
 `pyproject.toml`, or one that either changelog has no section for. The section it
 finds is published as the release notes, English above Russian.
 
+## 0.4.0 - 2026-10-27
+
+- **What an input gets.** A widget with a wire into it, greyed out down to
+  its name, now also says what comes in and from where: the value of a
+  Primitive or of a node whose one setting is what it hands on, such as a
+  seed node, as it is now, and of any other node what it handed on in the
+  last run, in italics once its inputs have changed since. Before the first
+  run it names the node the wire comes from. A box of text the wire hides,
+  a multiline prompt's, shows the text that comes in, line by line. It works
+  on Nodes 2.0 as well, and can be turned off under Settings > Breeze >
+  Inputs.
+- **The forecast knows what still stands.** Alongside what it computes
+  again, the forecast now tells, for every node of the last run, whether
+  its key in ComfyUI's cache is still the same, so whether what it handed
+  on then would come again. That is what puts a value in italics. ComfyUI
+  has to be restarted once for it.
+- **Which nodes a compass arrow points to.** With the pointer resting on an
+  arrow for half a second, a list names the nodes a click on it brings into
+  view, under the names of their groups, the same name twice counted once.
+  It can be turned off under Settings > Breeze > Compass.
+
 ## 0.3.1 - 2026-10-27
 
 - **The lineage on Nodes 2.0.** With Nodes 2.0 turned on, what feeds the
