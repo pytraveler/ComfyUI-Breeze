@@ -75,3 +75,28 @@
 .breeze-compass-tip .bct-name + .bwt-type {
   margin-top: 6px;
 }
+
+.breeze-card {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  overflow: hidden;
+  border-radius: inherit;
+  font-family: Inter, sans-serif;
+  line-height: 1.15;
+  pointer-events: none;
+}
+
+.breeze-card-band {
+  font-weight: 700;
+}
+
+.breeze-card-band > div,
+.breeze-card-values > div {
+  overflow: hidden;
+  white-space: pre;
+}
+
+.breeze-card-values {
+  opacity: 0.85;
+}

@@ -34,6 +34,8 @@ export const ENGLISH = {
   compassHide: "Hide the compass",
   compassLoose: "Outside groups",
   compassGroup: "Untitled group",
+  cardMenu: "Card when zoomed out",
+  cardAuto: "Pick the values automatically",
 }
 
 export async function fetchTranslations(fetchApi) {

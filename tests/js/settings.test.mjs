@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 
 import {
-  ARROWS, BOTH, COMPASS, COMPASS_MODES, COMPASS_NOTE, CONTROL, DEFAULTS, DOWNSTREAM, FADE, FORECAST, FORECAST_MODES, GLOW, INPUTS, LIGHT,
+  ARROWS, BOTH, CARD_SIZE, CARD_VALUES, CARDS, COMPASS, COMPASS_MODES, COMPASS_NOTE, CONTROL, DEFAULTS, DOWNSTREAM, FADE, FORECAST, FORECAST_MODES, GLOW, INPUTS, LIGHT,
   LIGHT_REPEATS, LIGHT_SPEED, LINEAGE, LOCALE, TIP, TRUNKS, UPSTREAM,
   definitions, hexColor, reader,
 } from "../../web/js/settings.js"
@@ -40,7 +40,9 @@ test("a colour is stored the way the colour picker stores one", () => {
 test("every setting that changes the picture redraws it", () => {
   const redraw = () => {}
   const redrawn = definitions(redraw).filter((item) => item.onChange === redraw)
-  assert.deepEqual(redrawn.map((item) => item.id), [LINEAGE, FADE, GLOW, UPSTREAM, DOWNSTREAM, BOTH, TRUNKS, INPUTS, FORECAST, COMPASS, LIGHT])
+  assert.deepEqual(redrawn.map((item) => item.id), [
+    LINEAGE, FADE, GLOW, UPSTREAM, DOWNSTREAM, BOTH, TRUNKS, INPUTS, FORECAST, COMPASS, LIGHT, CARDS, CARD_SIZE, CARD_VALUES,
+  ])
 })
 
 test("a list setting offers each of its values once, the default among them", () => {
@@ -81,6 +83,9 @@ test("a setting never changed reads as its default", () => {
   assert.equal(settings.light(), true)
   assert.equal(settings.lightSpeed(), 1)
   assert.equal(settings.lightRepeats(), 3)
+  assert.equal(settings.cards(), true)
+  assert.equal(settings.cardSize(), 14)
+  assert.equal(settings.cardValues(), 2)
   assert.equal(settings.controlBefore(), false)
 })
 
@@ -88,7 +93,7 @@ test("the values stored are what the extensions get", () => {
   const settings = reader(stored({
     [LINEAGE]: false, [FADE]: 35, [GLOW]: 0, [UPSTREAM]: "00ff00", [DOWNSTREAM]: "ff000080", [TIP]: false, [ARROWS]: false,
     [TRUNKS]: false, [INPUTS]: false, [FORECAST]: "always", [COMPASS]: "always", [COMPASS_NOTE]: false, [LIGHT]: false,
-    [LIGHT_SPEED]: 250, [LIGHT_REPEATS]: 5, [CONTROL]: "before",
+    [LIGHT_SPEED]: 250, [LIGHT_REPEATS]: 5, [CARDS]: false, [CARD_SIZE]: 20, [CARD_VALUES]: 0, [CONTROL]: "before",
   }))
   assert.equal(settings.lineage(), false)
   assert.equal(settings.fade(), 0.35)
@@ -104,6 +109,9 @@ test("the values stored are what the extensions get", () => {
   assert.equal(settings.light(), false)
   assert.equal(settings.lightSpeed(), 2.5)
   assert.equal(settings.lightRepeats(), 5)
+  assert.equal(settings.cards(), false)
+  assert.equal(settings.cardSize(), 20)
+  assert.equal(settings.cardValues(), 0)
   assert.equal(settings.controlBefore(), true)
 })
 
@@ -125,6 +133,13 @@ test("a value that makes no sense gives the default, and a fade stays in range",
   assert.equal(reader(stored({ [LIGHT_REPEATS]: -2 })).lightRepeats(), 1)
   assert.equal(reader(stored({ [LIGHT_REPEATS]: 2.4 })).lightRepeats(), 2)
   assert.equal(reader(stored({ [LIGHT_REPEATS]: "often" })).lightRepeats(), 3)
+  assert.equal(reader(stored({ [CARD_SIZE]: 100 })).cardSize(), 32)
+  assert.equal(reader(stored({ [CARD_SIZE]: 2 })).cardSize(), 10)
+  assert.equal(reader(stored({ [CARD_SIZE]: "big" })).cardSize(), 14)
+  assert.equal(reader(stored({ [CARD_SIZE]: 15.6 })).cardSize(), 16)
+  assert.equal(reader(stored({ [CARD_VALUES]: 9 })).cardValues(), 4)
+  assert.equal(reader(stored({ [CARD_VALUES]: -1 })).cardValues(), 0)
+  assert.equal(reader(stored({ [CARD_VALUES]: "some" })).cardValues(), 2)
 })
 
 test("settings not there to ask read as the defaults", () => {

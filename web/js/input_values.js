@@ -202,7 +202,7 @@ export function wrap(measure, text, width, rows) {
   return lines
 }
 
-function fitting(measure, text, width) {
+export function fitting(measure, text, width) {
   let low = 1
   let high = text.length
   while (low < high) {

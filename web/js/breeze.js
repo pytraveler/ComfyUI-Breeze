@@ -1,5 +1,6 @@
 import { app } from "../../scripts/app.js"
 import { api } from "../../scripts/api.js"
+import { cardMenu, installCards } from "./cards.js"
 import { installCompass } from "./compass.js"
 import { COMMAND, installCompassButton } from "./compass_button.js"
 import { fetchForecast, movingNodes } from "./forecast.js"
@@ -18,6 +19,8 @@ import { fetchTranslations, speaker, wordsFor } from "./words.js"
 
 let compassButton = null
 
+let say = null
+
 function redraw() {
   app.canvas?.setDirty?.(true, true)
   compassButton?.sync()
@@ -32,6 +35,11 @@ function addStyles() {
 
 const settings = reader((id) => app.extensionManager?.setting?.get?.(id))
 
+function cardChanged() {
+  app.canvas?.setDirty?.(true, true)
+  app.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState?.()
+}
+
 app.registerExtension({
   name: "darkil.Breeze",
   settings: definitions(redraw),
@@ -43,6 +51,9 @@ app.registerExtension({
       function: () => compassButton?.toggle(),
     },
   ],
+  getNodeMenuItems(node) {
+    return say && settings.cards() ? cardMenu(node, { say, changed: cardChanged }) : []
+  },
   async setup() {
     const canvas = app.canvas
     addStyles()
@@ -50,7 +61,7 @@ app.registerExtension({
     fetchTranslations((route) => api.fetchApi(route)).then((body) => {
       translations = body
     })
-    const say = speaker(() => wordsFor(translations, settings.locale()))
+    say = speaker(() => wordsFor(translations, settings.locale()))
     const workflow = () => app.rootGraph?.id ?? ""
     const outputs = () => fetchOutputs((route) => api.fetchApi(route), app.rootGraph?.id)
     const build = async () => {
@@ -67,6 +78,7 @@ app.registerExtension({
       listen: (type, handler) => api.addEventListener(type, handler),
       redraw,
     })
+    installCards(canvas, { enabled: settings.cards, size: settings.cardSize, count: settings.cardValues })
     installInputValues(canvas, {
       enabled: settings.inputs,
       feed,

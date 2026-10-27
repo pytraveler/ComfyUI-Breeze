@@ -3,8 +3,8 @@
 Frontend extensions that make a ComfyUI graph easier to read and to work in.
 They answer the questions a graph raises while you look at it: what feeds this
 node, what this wire carries, what this input gets, where the nodes went when
-the screen is empty, what the next run will compute again, what the run is
-computing now.
+the screen is empty, what a node is when zoomed out too far to read it, what
+the next run will compute again, what the run is computing now.
 
 [Russian version](README_RU.md) | [Changelog](CHANGELOG.md)
 
@@ -117,6 +117,30 @@ trunk.*
 
   *The button with the compass, last in the toolbar, turns the arrows off
   and back on.*
+- **What a node is from far away.** Zoom out to where ComfyUI stops drawing
+  the text on the nodes, and each node turns into a card: its title in large
+  letters, as easy to read as a title at 100%, and under it the values that
+  say most about the node, as many as there is room for: the model without
+  its folder and extension, the start of the prompt, the width and height,
+  the seed, and otherwise the first values in the node. A value the title
+  already gives, as `vae` in `Get_vae`, is not repeated, and an image
+  preview stays in view under the card. A Markdown note, a black box at
+  that zoom, shows its title instead, or its first line when it has no title
+  of its own, and under it as much of its text as fits, without the markup.
+  Each group's name stands in letters as large just above its top edge, cut
+  to the group's width. Further out than 25% all of this text shrinks bit by
+  bit, to seven tenths at 10%, so that more words fit a line. To choose what
+  a card shows, right-click the node and tick the values under Card when
+  zoomed out. Settings > Breeze > Cards turns the cards off and sets the
+  size of the title and how many values a card picks by itself; how far out the cards appear is ComfyUI's own setting, Zoom
+  Node Level of Detail - font size threshold, under LiteGraph. Nodes 2.0
+  has no simpler look of its own for that zoom, and the cards appear there
+  at the same point.
+
+  ![A MOSS-Image workflow zoomed far out. Two black Markdown notes on the left read Guide: Subgraph and MOSS-Image capabilities and limits in large letters, with the start of their text under each: Model Links, Hugging Face: Comfy-Org/MOSS-Image, and Sources, Resolution, Item and Official. On the right the names of the groups, Prompt Enhancer, Models, Prompt and Image Size, stand large above their top edges. The nodes are cards: KSampler with seed and steps 25, Save Image with moss_image_t2i, Load CLIP with qwen3.5_9b, Resolution Selector with megapixels 1 and multiple 16, Text (User Prompt) with the start of its prompt](docs/zoom_text.png)
+
+  *Zoomed far out, every node keeps a title you can read and the values that
+  matter most, the notes keep their text, and the groups their names.*
 - **What the next run computes again.** Rest the pointer on Run and every
   node the run needs is outlined: green where its result comes from the
   cache, orange where it is computed again, yellow where it is computed on
@@ -137,8 +161,8 @@ trunk.*
   rows of width and height say what it hands on: 1024.*
 
 Each can be switched off under Settings > Breeze, which is also where the
-fade, the glow's radius, the three outline colours and the pace of the
-light are set; a radius of 0
+fade, the glow's radius, the three outline colours, the pace of the light
+and the size of a card's title are set; a radius of 0
 turns the glow off. A colour given in eight hex digits
 carries an alpha as well. With ComfyUI set to Russian the settings and the
 tooltip are in Russian; in any other language they read in English.
@@ -200,10 +224,11 @@ none.
 
 ## How it changes a workflow
 
-It does not. Everything is drawn over the canvas, and anything an extension
-has to remember is kept in the workflow's `extra` field. No node is added and
-no link is rewired, so a workflow saved with these extensions loads and runs
-the same without them. The principle is borrowed from
+It does not. Everything is drawn over the canvas. The one thing kept is the
+choice of values a card shows, when you make one: it goes in the node's
+properties, which are saved with the workflow and never sent to run. No node
+is added and no link is rewired, so a workflow saved with these extensions
+loads and runs the same without them. The principle is borrowed from
 [Zip Ties](https://github.com/safzanpirani/comfyui-zip-ties).
 
 ## Install

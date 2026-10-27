@@ -10,6 +10,18 @@ that disagrees with
 `pyproject.toml`, or one that either changelog has no section for. The section it
 finds is published as the release notes, English above Russian.
 
+## 0.6.0 - 2026-10-27
+
+- **What a node is from far away.** Zoomed out to where ComfyUI stops
+  drawing the text on the nodes, each node turns into a card with its title
+  in large letters and the values that say most about it: the model, the
+  start of the prompt, the size, the seed. A Markdown note shows its title
+  and as much of its text as fits instead of a black box, and each group's
+  name stands in large letters above it. The values on a card can be picked by hand from
+  the node's menu, under Card when zoomed out. It works with Nodes 2.0 as
+  well; Settings > Breeze > Cards turns it off and sets the size of the
+  title and how many values a card picks by itself.
+
 ## 0.5.0 - 2026-10-27
 
 - **What the run is computing now.** While a prompt queued from the page

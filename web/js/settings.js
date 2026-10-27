@@ -14,6 +14,9 @@ export const COMPASS_NOTE = "Breeze.Compass.Tooltip"
 export const LIGHT = "Breeze.RunLight.Enabled"
 export const LIGHT_SPEED = "Breeze.RunLight.Speed"
 export const LIGHT_REPEATS = "Breeze.RunLight.Repeats"
+export const CARDS = "Breeze.Cards.Enabled"
+export const CARD_SIZE = "Breeze.Cards.TitleSize"
+export const CARD_VALUES = "Breeze.Cards.Values"
 
 export const LOCALE = "Comfy.Locale"
 export const CONTROL = "Comfy.WidgetControlMode"
@@ -35,6 +38,9 @@ export const DEFAULTS = {
   [LIGHT]: true,
   [LIGHT_SPEED]: 100,
   [LIGHT_REPEATS]: 3,
+  [CARDS]: true,
+  [CARD_SIZE]: 14,
+  [CARD_VALUES]: 2,
 }
 
 export const FORECAST_MODES = ["run", "always", "off"]
@@ -49,6 +55,11 @@ const SPEED_MIN = 25
 const SPEED_MAX = 300
 
 const REPEATS_MAX = 5
+
+const CARD_SIZE_MIN = 10
+const CARD_SIZE_MAX = 32
+
+const CARD_VALUES_MAX = 4
 
 const HEX = /^#?([0-9a-f]{6}|[0-9a-f]{8})$/i
 
@@ -207,6 +218,35 @@ export function definitions(redraw) {
       attrs: { min: 1, max: REPEATS_MAX, step: 1 },
       defaultValue: DEFAULTS[LIGHT_REPEATS],
     },
+    {
+      id: CARDS,
+      category: ["Breeze", "Cards", "Cards"],
+      name: "Turn the nodes into cards with large titles when zoomed out",
+      tooltip: "Once the canvas is too far out for the nodes' own text, each node shows its title in large letters and the values that matter most: the model, the start of the prompt, the size, the seed. A note shows its title and as much of its text as fits, and each group's name stands in large letters above it. Right-click a node and choose Card when zoomed out to pick its values yourself. How far out that is, is set by LiteGraph's own Zoom Node Level of Detail - font size threshold.",
+      type: "boolean",
+      defaultValue: DEFAULTS[CARDS],
+      onChange: redraw,
+    },
+    {
+      id: CARD_SIZE,
+      category: ["Breeze", "Cards", "Title size"],
+      name: "Height of the title on a card, in pixels on screen",
+      tooltip: "14 reads as a node does at 100 percent. The values are a little smaller, and further out than 25 percent all the text shrinks bit by bit, to seven tenths at 10 percent, so that more of it fits. A title too long for its node takes up to three lines and is then cut short.",
+      type: "slider",
+      attrs: { min: CARD_SIZE_MIN, max: CARD_SIZE_MAX, step: 1 },
+      defaultValue: DEFAULTS[CARD_SIZE],
+      onChange: redraw,
+    },
+    {
+      id: CARD_VALUES,
+      category: ["Breeze", "Cards", "Values"],
+      name: "How many values a card picks by itself",
+      tooltip: "Values picked by hand are all shown, as many as the node has room for. 0 leaves only the title.",
+      type: "slider",
+      attrs: { min: 0, max: CARD_VALUES_MAX, step: 1 },
+      defaultValue: DEFAULTS[CARD_VALUES],
+      onChange: redraw,
+    },
   ]
   return all.map((item, index) => ({ ...item, sortOrder: all.length - index }))
 }
@@ -246,6 +286,12 @@ export function reader(get) {
     light: () => Boolean(read(LIGHT)),
     lightSpeed: () => Math.min(SPEED_MAX, Math.max(SPEED_MIN, Number(read(LIGHT_SPEED)) || DEFAULTS[LIGHT_SPEED])) / 100,
     lightRepeats: () => Math.min(REPEATS_MAX, Math.max(1, Math.round(Number(read(LIGHT_REPEATS)) || DEFAULTS[LIGHT_REPEATS]))),
+    cards: () => Boolean(read(CARDS)),
+    cardSize: () => Math.min(CARD_SIZE_MAX, Math.max(CARD_SIZE_MIN, Math.round(Number(read(CARD_SIZE)) || DEFAULTS[CARD_SIZE]))),
+    cardValues: () => {
+      const value = Math.round(Number(read(CARD_VALUES)))
+      return Number.isFinite(value) ? Math.min(CARD_VALUES_MAX, Math.max(0, value)) : DEFAULTS[CARD_VALUES]
+    },
     controlBefore: () => read(CONTROL) === "before",
     locale: () => {
       const value = read(LOCALE)
