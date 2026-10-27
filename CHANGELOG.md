@@ -10,6 +10,18 @@ that disagrees with
 `pyproject.toml`, or one that either changelog has no section for. The section it
 finds is published as the release notes, English above Russian.
 
+## 0.3.1 - 2026-10-27
+
+- **The lineage on Nodes 2.0.** With Nodes 2.0 turned on, what feeds the
+  selection and what it feeds are outlined in their colours with the same
+  soft glow as on the canvas, and the rest of the nodes fade along with the
+  wires, where before only the wires faded.
+- **The forecast on Nodes 2.0.** The nodes Nodes 2.0 draws get the
+  forecast's marks too: outlined and glowing in the colour of what the next
+  run does to them while the pointer is on Run, and tagged with the time
+  they took over their top right corner, as on the canvas. Before, only the
+  note under Run showed.
+
 ## 0.3.0 - 2026-10-27
 
 - **Where the nodes went.** With no node in view, arrows at the edges of the

@@ -26,7 +26,9 @@ trunk.*
   with a soft glow of its colour, and the rest of the graph fades, wires and
   prompt boxes included. Select several
   and they light up together; a node between two of them is outlined in violet.
-  Frontend reroutes and Reroute nodes are followed like any other link.
+  Frontend reroutes and Reroute nodes are followed like any other link. With
+  Nodes 2.0 the outlines and the glow sit on the nodes it draws as well, and
+  those nodes fade too.
 - **What a wire is.** Rest the pointer on a wire for a moment and a tooltip
   names its type, the output it leaves and the inputs it reaches, and what went
   along it in the last run: `1x1536x1024x3 float32` for an image, the head of
@@ -72,7 +74,8 @@ trunk.*
   ComfyUI's own cache, so a run from another tab, an entry the cache let go
   and a seed that changes after every run all count. Under Settings >
   Breeze > Forecast the marks can stay on the nodes all the time instead,
-  renewed after every edit and every run.
+  renewed after every edit and every run. With Nodes 2.0 the outlines, their
+  glow and the tags sit on the nodes it draws as well.
 
 ![The forecast with the pointer resting on Run, in a YuE2 workflow with ComfyUI in Russian. Write the song, whose badge says it took 18.85 s last time, and The score it sang are outlined in green: both come from the cache. The song, a SaveAudioAdvanced node whose format has just been switched to mp3, is outlined in orange, with a tag beside its badges saying it took under a second. The note under the Run button reads Next run: computed again 1, from the cache 2, under a second](docs/what_computes_again.png)
 
@@ -128,9 +131,6 @@ none.
 
 ### Not yet supported
 
-- With "Modern Node Design (Nodes 2.0)" turned on under Settings > Comfy >
-  Nodes 2.0, the lineage fades the wires but not the nodes, and the forecast
-  marks no nodes; the note under Run still sums it up.
 - Inside a subgraph the forecast marks nothing; on the top level a subgraph's
   node takes the mark of what is inside it.
 - A trunk only forms for inputs ahead of the output, on the left of their

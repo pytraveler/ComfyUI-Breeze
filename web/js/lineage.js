@@ -1,5 +1,6 @@
 import { drawGlow } from "./glow.js"
 import { lineage, roleOf, sameLineage, selectedNodeIds } from "./graph_walk.js"
+import { nodeSelector, outlined, rule, styleSheet, vueNodes } from "./vue_nodes.js"
 
 const BOX = 1
 
@@ -9,19 +10,26 @@ const OUTLINE_PX = 2
 
 const LINK_FLOOR = 0.06
 
+const ROLES = ["up", "down", "both"]
+
 export function installLineage(canvas, { enabled, fade, colors, glow = () => 0 }) {
   const proto = Object.getPrototypeOf(canvas)
-  const state = { lineage: null, graph: null, fade: 0, colors: {}, glow: 0, faded: new Map() }
+  const state = {
+    lineage: null, graph: null, fade: 0, colors: {}, glow: 0, vue: false, faded: new Map(),
+    sheet: styleSheet(), styled: null,
+  }
   const { draw, renderLink, drawNode } = proto
 
   proto.draw = function (...args) {
     if (this === canvas) {
       state.colors = colors()
       state.glow = glow()
-      if (update(this, state, enabled(), fade())) {
+      const changed = update(this, state, enabled(), fade(), vueNodes())
+      if (changed) {
         this.dirty_bgcanvas = true
         this.dirty_canvas = true
       }
+      restyle(state, changed)
     }
     return draw.apply(this, args)
   }
@@ -43,7 +51,7 @@ export function installLineage(canvas, { enabled, fade, colors, glow = () => 0 }
   proto.drawNode = function (node, ctx) {
     const result = drawNode.apply(this, arguments)
     const found = state.lineage
-    if (this === canvas && found && !globalThis.LiteGraph?.vueNodesMode) {
+    if (this === canvas && found && !state.vue) {
       paint(this, node, ctx, found, state)
     }
     return result
@@ -62,14 +70,15 @@ function dimmed(state) {
   return Math.max(LINK_FLOOR, 1 - state.fade)
 }
 
-function update(canvas, state, on, fade) {
+function update(canvas, state, on, fade, vue) {
   const graph = canvas.graph ?? null
   const ids = on && graph ? selectedNodeIds(graph, canvas.selectedItems) : null
   const next = ids?.size ? lineage(graph.links.values(), ids) : null
-  const changed = state.graph !== graph || state.fade !== fade
+  const changed = state.graph !== graph || state.fade !== fade || state.vue !== vue
     || !sameLineage(state.lineage, next)
   state.graph = graph
   state.fade = fade
+  state.vue = vue
   state.lineage = next
   if (changed) fadeWidgets(state)
   return changed
@@ -110,8 +119,30 @@ function paint(canvas, node, ctx, found, { fade, colors, glow }) {
   ctx.restore()
 }
 
+function restyle(state, changed) {
+  const key = state.vue ? JSON.stringify([state.colors, state.glow, state.graph?.nodes?.length ?? 0]) : null
+  if (!changed && key === state.styled) return
+  state.styled = key
+  state.sheet(state.vue ? vueStyle(state.lineage, state.graph?.nodes ?? [], state) : "")
+}
+
+export function vueStyle(found, nodes, { fade, colors, glow }) {
+  if (!found) return ""
+  const lit = { up: [], down: [], both: [] }
+  const faded = []
+  for (const node of nodes) {
+    if (found.selected.has(node.id)) continue
+    const role = roleOf(found, node.id)
+    if (role) lit[role].push(nodeSelector(node.id))
+    else if (fade > 0) faded.push(nodeSelector(node.id))
+  }
+  const rules = ROLES.flatMap((role) => outlined(lit[role], colors[role], { glow }))
+  if (faded.length) rules.push(rule(faded, "opacity: " + dimmed({ fade }) + " !important;"))
+  return rules.join(" ")
+}
+
 function fadeWidgets(state) {
-  const found = state.lineage
+  const found = state.vue ? null : state.lineage
   const keep = new Set()
   for (const node of found ? state.graph?.nodes ?? [] : []) {
     if (found.selected.has(node.id) || roleOf(found, node.id)) continue

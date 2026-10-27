@@ -1,5 +1,6 @@
 import { drawGlow } from "./glow.js"
 import { duration, onCanvas, summaryLines } from "./forecast.js"
+import { nodeSelector, outlined, rule, styleSheet, vueNodes } from "./vue_nodes.js"
 import { english } from "./words.js"
 
 export const RUN_BUTTON = '[data-testid="queue-button"]'
@@ -17,6 +18,10 @@ const DOT_PX = 3.5
 const GAP_PX = 5
 
 const SCALE_FLOOR = 0.5
+
+const UNIT_STEP = 10
+
+const TAG_BACKGROUND = "rgba(20, 20, 20, 0.85)"
 
 const SETTLE_MS = 400
 const REFRESH_MS = 30000
@@ -36,6 +41,8 @@ export function installForecast(canvas, { mode, glow = () => 0, say = english, i
   }
   const frame = { shown: null, outline: false, glow: 0, unit: 1 }
   const adopted = new WeakSet()
+  const sheet = styleSheet()
+  let styled = null
   let timer = 0
   let tip = null
 
@@ -74,6 +81,11 @@ export function installForecast(canvas, { mode, glow = () => 0, say = english, i
       frame.outline = Boolean(state.hover)
       frame.glow = glow()
       frame.unit = 1 / Math.min(1, Math.max(SCALE_FLOOR, this.ds.scale))
+      const look = vueNodes() ? { ...frame, unit: Math.round(frame.unit * UNIT_STEP) / UNIT_STEP } : null
+      if (!sameLook(look, styled)) {
+        styled = look
+        sheet(look ? vueStyle(look.shown, look, say) : "")
+      }
     }
     return draw.apply(this, args)
   }
@@ -81,7 +93,7 @@ export function installForecast(canvas, { mode, glow = () => 0, say = english, i
   proto.drawNode = function (node, ctx) {
     if (this === canvas) adopt(node)
     const result = drawNode.apply(this, arguments)
-    const found = this === canvas && !globalThis.LiteGraph?.vueNodesMode ? foundFor(node) : null
+    const found = this === canvas && !vueNodes() ? foundFor(node) : null
     if (found) paint(this, node, ctx, found, frame, say)
     return result
   }
@@ -208,6 +220,64 @@ function paint(canvas, node, ctx, found, { outline, glow, unit }, say) {
   ctx.restore()
 }
 
+function sameLook(a, b) {
+  if (!a || !b) return a === b
+  return a.shown === b.shown && a.outline === b.outline && a.glow === b.glow && a.unit === b.unit
+}
+
+export function vueStyle(shown, { outline = false, glow = 0, unit = 1 } = {}, say = english) {
+  if (!shown?.size) return ""
+  const rules = []
+  if (outline) {
+    const states = new Map()
+    for (const [id, found] of shown) {
+      const selectors = states.get(found.state) ?? []
+      selectors.push(nodeSelector(id))
+      states.set(found.state, selectors)
+    }
+    for (const [state, selectors] of states) {
+      rules.push(...outlined(selectors, COLOURS[state], { glow, dashed: state === "maybe" }))
+    }
+  }
+  for (const [id, found] of shown) {
+    rules.push(rule([nodeSelector(id) + "::after"], tagStyle(found.state, tagText(found, say), unit, outline)))
+  }
+  return rules.join(" ")
+}
+
+function tagStyle(state, text, unit, outline) {
+  const colour = COLOURS[state]
+  const height = tagHeight(unit)
+  const pad = 5 * unit
+  const dot = DOT_PX * unit
+  const centre = text ? px(pad + dot) : "50%"
+  const mark = state === "maybe"
+    ? [px(dot - 0.75 * unit - 0.5), px(dot - 0.75 * unit), px(dot + 0.75 * unit), px(dot + 0.75 * unit + 0.5)]
+    : [null, null, px(dot), px(dot + 0.5)]
+  const stops = (mark[0] ? ["transparent " + mark[0], colour + " " + mark[1]] : [])
+    .concat([colour + " " + mark[2], "transparent " + mark[3]])
+  return [
+    "content: " + JSON.stringify(text),
+    "position: absolute",
+    "right: 0",
+    "bottom: calc(100% + " + px(GAP_PX * unit + (outline ? PAD : 0)) + ")",
+    "box-sizing: border-box",
+    "height: " + px(height),
+    "min-width: " + px(height),
+    "padding: 0 " + px(text ? pad : 0) + " 0 " + px(text ? pad + 2 * dot + 4 * unit : 0),
+    "border-radius: " + px(height / 2),
+    "background: radial-gradient(circle at " + centre + " 50%, " + stops.join(", ") + "), " + TAG_BACKGROUND,
+    "color: " + colour,
+    "font: " + px(FONT_PX * unit) + "/" + px(height) + " system-ui, sans-serif",
+    "white-space: nowrap",
+    "pointer-events: none",
+  ].join("; ") + ";"
+}
+
+function px(value) {
+  return Math.round(value * 100) / 100 + "px"
+}
+
 function tagText(found, say) {
   return found.computed && found.timed ? duration(found.seconds, say) : ""
 }
@@ -235,7 +305,7 @@ function tag(ctx, state, text, left, top, unit) {
   ctx.font = FONT_PX * unit + "px system-ui, sans-serif"
   ctx.globalAlpha = 1
   ctx.beginPath()
-  ctx.fillStyle = "rgba(20, 20, 20, 0.85)"
+  ctx.fillStyle = TAG_BACKGROUND
   ctx.roundRect(left, top, width, height, height / 2)
   ctx.fill()
   const cx = text ? left + pad + dot : left + width / 2
