@@ -234,3 +234,41 @@ test("the flash where a flight lands comes in, beats twice, and is gone at the e
   assert.equal(peaks.length, 2, String(peaks))
   assert.ok(flashAlpha(0.1) > flashAlpha(0.9), "it fades")
 })
+
+test("the arrow back from a Get node flies to its Set node, and the arrow into a Set node to its Get nodes", () => {
+  const SET = [400, 0, 100, 30]
+  const GETS = [[0, 600, 100, 30], [0, 900, 100, 30]]
+  const set = { ...node(2, SET), type: "SetNode", widgets: [{ value: "image" }] }
+  const gets = GETS.map((rect, i) => ({ ...node(3 + i, rect, { inputs: 0 }), type: "GetNode", widgets: [{ value: "image" }] }))
+  const nodes = [node(1, LOAD, { inputs: 0 }), set, ...gets, node(5, INVERT)]
+  const g = graph(nodes, [link(7, 1, 0, 2, 0), link(8, 3, 0, 5, 0)], { _nodes: nodes })
+  const into = wireLine(g, g.getLink(7), SPLINE)
+  const ahead = arrowsAround(g, [g.getLink(7)], into[Math.floor(into.length / 2)], 1, SPLINE, () => "#fff")
+  assert.deepEqual(ahead.find((arrow) => arrow.key === "target").goals, GETS)
+  assert.deepEqual(ahead.find((arrow) => arrow.key === "source").goals, [LOAD])
+  const out = wireLine(g, g.getLink(8), SPLINE)
+  const back = arrowsAround(g, [g.getLink(8)], out[Math.floor(out.length / 2)], 1, SPLINE, () => "#fff")
+  assert.deepEqual(back.find((arrow) => arrow.key === "source").goals, [SET])
+  assert.deepEqual(back.find((arrow) => arrow.key === "target").goals, [INVERT])
+})
+
+test("the arrow ahead on a wire into a Multi Set flies only to the Get nodes that read that input", () => {
+  const SET = [400, 0, 100, 60]
+  const MULTI = [0, 600, 100, 60]
+  const AIO = [0, 900, 100, 60]
+  const set = { ...node(2, SET, { inputs: 2, outputs: 2 }), type: "darkilMultiSetNode", widgets: [{ value: "pair" }] }
+  const multi = { ...node(3, MULTI, { inputs: 0, outputs: 2 }), type: "darkilMultiGetNode", widgets: [{ value: "pair" }] }
+  const aio = {
+    ...node(4, AIO, { inputs: 0, outputs: 1 }), type: "darkilMultiGetAIONode", widgets: [{ value: 1 }],
+    slotInfo: [{ groupName: "pair", inputIdx: 1 }],
+  }
+  const nodes = [node(1, LOAD, { inputs: 0, outputs: 2 }), set, multi, aio, node(5, INVERT)]
+  const g = graph(nodes, [link(7, 1, 0, 2, 0), link(8, 1, 1, 2, 1), link(9, 4, 0, 5, 0)], { _nodes: nodes })
+  const ahead = (id) => {
+    const line = wireLine(g, g.getLink(id), SPLINE)
+    return arrowsAround(g, [g.getLink(id)], line[Math.floor(line.length / 2)], 1, SPLINE, () => "#fff")
+  }
+  assert.deepEqual(ahead(7).find((arrow) => arrow.key === "target").goals, [MULTI])
+  assert.deepEqual(ahead(8).find((arrow) => arrow.key === "target").goals, [MULTI, AIO])
+  assert.deepEqual(ahead(9).find((arrow) => arrow.key === "source").goals, [SET])
+})

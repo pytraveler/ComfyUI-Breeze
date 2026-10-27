@@ -10,6 +10,22 @@ that disagrees with
 `pyproject.toml`, or one that either changelog has no section for. The section it
 finds is published as the release notes, English above Russian.
 
+## 0.7.1 - 2026-10-28
+
+- **Where a hidden wire goes.** The Set and Get nodes of KJNodes and
+  Easy-Use, and Multi Set, Multi Get and Multi Get AIO of darkilNodes, are
+  followed as the wires they stand in for, input by input: the lineage of a
+  selection runs on from an input of a Set node to the Get node outputs
+  that read it and back, an input fed by a Get node shows the value of the
+  node behind the Set node, the run light goes on out of those outputs, and
+  the arrows on a wire carry the view from a Get node to its Set node and
+  from an input of a Set node to the Get nodes that read it.
+- **Fixed:** an input fed by a Get node with no Set node showed the Get
+  node's own name as its value, and Breeze had KJNodes and darkilNodes put
+  up their warning about the missing Set node on every redraw; with an
+  Easy-Use Get node, drawing the values on inputs threw an error on every
+  frame instead.
+
 ## 0.7.0 - 2026-10-27
 
 - **Which node a note is about.** A note can be attached to a node, from

@@ -1,3 +1,4 @@
+import { isSetter, readersOf } from "./set_get.js"
 import { measure, pointAt, wireLine } from "./wire_arrows.js"
 import { colourOf } from "./wire_hover.js"
 
@@ -185,9 +186,15 @@ function flow(graph, links, start, timeOf, pulses, seen, hops) {
       const next = ids.map((each) => inner.getLink?.(each)).filter(Boolean)
       flow(inner, next, start + duration, timeOf, pulses, seen, hops + 1)
     } else if (target?.isVirtualNode) {
-      flow(graph, outputLinks(graph, target, null), start + duration, timeOf, pulses, seen, hops + 1)
+      flow(graph, onward(graph, target, link.target_slot), start + duration, timeOf, pulses, seen, hops + 1)
     }
   }
+}
+
+function onward(graph, node, slot) {
+  if (!isSetter(node)) return outputLinks(graph, node, null)
+  const outputs = [{ node, slot }, ...readersOf(graph, node, slot)]
+  return outputs.flatMap((output) => outputLinks(graph, output.node, new Set([output.slot])))
 }
 
 export function travelTime(length, scale, share) {

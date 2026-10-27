@@ -1,5 +1,6 @@
 import { drawGlow } from "./glow.js"
 import { lineage, roleOf, sameLineage, selectedNodeIds } from "./graph_walk.js"
+import { wiring } from "./set_get.js"
 import { nodeSelector, outlined, rule, styleSheet, vueNodes } from "./vue_nodes.js"
 
 const BOX = 1
@@ -73,7 +74,7 @@ function dimmed(state) {
 function update(canvas, state, on, fade, vue) {
   const graph = canvas.graph ?? null
   const ids = on && graph ? selectedNodeIds(graph, canvas.selectedItems) : null
-  const next = ids?.size ? lineage(graph.links.values(), ids) : null
+  const next = ids?.size ? lineage(graph.links.values(), ids, wiring(graph)) : null
   const changed = state.graph !== graph || state.fade !== fade || state.vue !== vue
     || !sameLineage(state.lineage, next)
   state.graph = graph

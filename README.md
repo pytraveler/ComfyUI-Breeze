@@ -93,6 +93,20 @@ trunk.*
 
   *Text to Image has finished, and the light runs along its wire to the
   node that saves the image.*
+- **Where a hidden wire goes.** The Set and Get nodes of KJNodes and
+  Easy-Use, and Multi Set, Multi Get and Multi Get AIO of darkilNodes,
+  stand in for wires, and Breeze follows them as if the wires were there,
+  input by input. Select a node fed by a Get node and the Set node lights
+  up with what feeds the one input behind that output, and nothing else
+  that goes into the Set node; select a Set node and its Get nodes light up
+  with what they feed. An input fed by a Get node shows the value of the
+  node behind the Set node and names that node, the run light that reaches
+  an input of a Set node goes on out of every output that carries it, and
+  on a wire out of a Get node the arrow back carries the view to its Set
+  node, as the arrow ahead on a wire into a Set node does to every Get node
+  that reads that input. A Get node is paired with the Set node of its name
+  in the same graph, so one inside a subgraph whose Set node is outside it
+  is not followed.
 - **Where the nodes went.** When no node is in view, arrows at the edges
   of the canvas point to the ones off screen: one to each group, with its
   name, and one to each cluster of nodes outside any group, with how many

@@ -302,3 +302,22 @@ test("the light runs along a wire as many times as the setting says, and a chose
   assert.equal(passes(), 3)
   assert.equal(light.enabled(), true)
 })
+
+test("the light that reaches a Set node goes on out of each of its Get nodes", () => {
+  const set = { ...node(5, { inputs: 1, virtual: true }), type: "SetNode", widgets: [{ value: "image" }] }
+  const get = { ...node(6, { outputs: [[11]], virtual: true }), type: "GetNode", widgets: [{ value: "image" }] }
+  const other = { ...node(8, { outputs: [[12]], virtual: true }), type: "GetNode", widgets: [{ value: "mask" }] }
+  const nodes = [node(1, { outputs: [[7]] }), set, get, other, node(2, { inputs: 1 }), node(3, { inputs: 1 })]
+  const root = graph(nodes, [link(7, 1, 0, 5, 0), link(11, 6, 0, 2, 0), link(12, 8, 0, 3, 0)], { _nodes: nodes })
+  assert.deepEqual(lit(plan(root, "1", timeOf, 1000)), [[7, 1000, 70], [11, 1070, 110]])
+})
+
+test("the light into one input of a Multi Set goes on only out of the outputs that carry that input", () => {
+  const set = { ...node(5, { inputs: 2, outputs: [[], [13]], virtual: true }), type: "darkilMultiSetNode", widgets: [{ value: "pair" }] }
+  const get = { ...node(6, { outputs: [[11], [12]], virtual: true }), type: "darkilMultiGetNode", widgets: [{ value: "pair" }] }
+  const nodes = [node(1, { outputs: [[7]] }), node(2, { outputs: [[8]] }), set, get, node(3, { inputs: 2 }), node(4, { inputs: 1 })]
+  const root = graph(nodes, [
+    link(7, 1, 0, 5, 0), link(8, 2, 0, 5, 1), link(11, 6, 0, 3, 0), link(12, 6, 1, 3, 1), link(13, 5, 1, 4, 0),
+  ], { _nodes: nodes })
+  assert.deepEqual(lit(plan(root, "2", timeOf, 0)), [[8, 0, 80], [13, 80, 130], [12, 80, 120]])
+})

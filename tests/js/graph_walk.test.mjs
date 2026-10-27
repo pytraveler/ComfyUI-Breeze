@@ -4,6 +4,7 @@ import { test } from "node:test"
 import {
   lineage, linkEnds, roleOf, sameLineage, selectedNodeIds, valueSource,
 } from "../../web/js/graph_walk.js"
+import { wiring } from "../../web/js/set_get.js"
 import { speaker } from "../../web/js/words.js"
 
 function link(id, origin, originSlot, target, targetSlot, type = "IMAGE") {
@@ -141,4 +142,51 @@ test("a chain that ends nowhere gives no source", () => {
   const loose = { id: 8, isVirtualNode: true, getInputLink: () => null }
   assert.equal(valueSource(graph([loose], []), link(1, 8, 0, 3, 0)), null)
   assert.equal(valueSource(graph([], []), link(1, 99, 0, 3, 0)), null)
+})
+
+function hidden() {
+  const nobody = () => { throw new Error("no setter") }
+  const nodes = [
+    { id: 1, title: "Load Model" },
+    { id: 2, title: "Load CLIP" },
+    {
+      id: 3, type: "darkilMultiSetNode", widgets: [{ value: "loaders" }], isVirtualNode: true,
+      inputs: [{ link: 10 }, { link: 11 }, { link: null }], outputs: [{ links: [] }, { links: [16] }, { links: [] }],
+    },
+    { id: 4, type: "darkilMultiGetNode", widgets: [{ value: "loaders" }], isVirtualNode: true, getInputLink: nobody, outputs: [{}, {}] },
+    { id: 5, type: "GetNode", widgets: [{ value: "lost" }], isVirtualNode: true, getInputLink: nobody, outputs: [{}] },
+    { id: 6, title: "Sampler" },
+    { id: 7, title: "Encode" },
+  ]
+  const links = [
+    link(10, 1, 0, 3, 0, "MODEL"), link(11, 2, 0, 3, 1, "CLIP"), link(12, 4, 0, 6, 0, "MODEL"),
+    link(13, 4, 1, 7, 0, "CLIP"), link(14, 5, 0, 6, 1, "LATENT"), link(15, 7, 0, 6, 2, "CONDITIONING"),
+    link(16, 3, 1, 7, 1, "CLIP"),
+  ]
+  return graph(nodes, links, { _nodes: nodes })
+}
+
+test("a selection goes through Set and Get nodes slot by slot, as the wires they stand in for", () => {
+  const g = hidden()
+  const encode = lineage(g.links.values(), new Set([7]), wiring(g))
+  assert.deepEqual([...encode.upstream].sort(), [2, 3, 4])
+  assert.deepEqual([...encode.downstream].sort(), [6])
+  assert.deepEqual([...encode.links].sort(), [11, 13, 15, 16])
+  const model = lineage(g.links.values(), new Set([1]), wiring(g))
+  assert.deepEqual([...model.downstream].sort(), [3, 4, 6])
+  assert.deepEqual([...model.links].sort(), [10, 12])
+  const set = lineage(g.links.values(), new Set([3]), wiring(g))
+  assert.deepEqual([...set.upstream].sort(), [1, 2])
+  assert.deepEqual([...set.downstream].sort(), [4, 6, 7])
+  assert.equal(set.links.has(null), false)
+  const plain = lineage(g.links.values(), new Set([7]))
+  assert.deepEqual([...plain.upstream].sort(), [1, 2, 3, 4], "without the wiring a Set node is one node like any other")
+})
+
+test("a value through a Get node comes from what feeds that input of its Set node, and a Get node without one gives none", () => {
+  const g = hidden()
+  assert.equal(valueSource(g, g.getLink(12)).node.title, "Load Model")
+  assert.equal(valueSource(g, g.getLink(13)).node.title, "Load CLIP")
+  assert.equal(valueSource(g, g.getLink(16)).id, "2")
+  assert.equal(valueSource(g, g.getLink(14)), null)
 })

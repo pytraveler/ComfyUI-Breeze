@@ -1,5 +1,6 @@
 import { fly } from "./flight.js"
 import { drawGlow } from "./glow.js"
+import { readOf, readersOf } from "./set_get.js"
 import { colourOf, linksAt } from "./wire_hover.js"
 
 const STEPS = { 1: [0, -1], 2: [0, 1], 3: [-1, 0], 4: [1, 0] }
@@ -187,8 +188,8 @@ export function arrowsAround(graph, links, point, scale, mode, colour, routeOf =
     const siblings = links.filter((other) => other.origin_id === link.origin_id
       && other.origin_slot === link.origin_slot)
     const goals = {
-      source: [from.rect],
-      target: siblings.map((other) => targetEnd(graph, other)?.rect).filter(Boolean),
+      source: [readOf(graph, graph.getNodeById(link.origin_id), link.origin_slot)?.node.boundingRect ?? from.rect],
+      target: siblings.flatMap((other) => targetGoals(graph, other)),
     }
     const arrows = []
     for (const [key, sign] of pointing ? [["source", -1], ["target", 1]] : []) {
@@ -346,6 +347,13 @@ function sourceEnd(graph, link) {
   const io = graph.inputNode
   const own = io && io.id === link.origin_id ? io.slots?.[link.origin_slot] : null
   return own ? { at: own.pos, dir: RIGHT, rect: io.boundingRect } : null
+}
+
+function targetGoals(graph, link) {
+  const readers = new Set(readersOf(graph, graph.getNodeById(link.target_id), link.target_slot).map((read) => read.node))
+  if (readers.size) return [...readers].map((node) => node.boundingRect)
+  const rect = targetEnd(graph, link)?.rect
+  return rect ? [rect] : []
 }
 
 function targetEnd(graph, link) {

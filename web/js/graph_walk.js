@@ -1,6 +1,9 @@
+import { feedOf, isGetter, isSetter } from "./set_get.js"
 import { english } from "./words.js"
 
 const HOPS = 64
+
+const UNWIRED = { split: new Set(), edges: [] }
 
 export function selectedNodeIds(graph, items) {
   const ids = new Set()
@@ -10,36 +13,54 @@ export function selectedNodeIds(graph, items) {
   return ids
 }
 
-export function lineage(links, selected) {
+export function lineage(links, selected, wiring = UNWIRED) {
+  const ports = new Map()
+  const owner = new Map()
+  const vertex = (id, side, slot) => {
+    if (!wiring.split.has(id)) return id
+    const key = JSON.stringify([id, side, slot])
+    if (!owner.has(key)) {
+      owner.set(key, id)
+      group(ports, id, key)
+    }
+    return key
+  }
   const into = new Map()
   const from = new Map()
-  for (const link of links) {
-    group(into, link.target_id, link)
-    group(from, link.origin_id, link)
+  const join = (a, b, id) => {
+    group(into, b, { next: a, id })
+    group(from, a, { next: b, id })
   }
+  for (const link of links) {
+    join(vertex(link.origin_id, "out", link.origin_slot), vertex(link.target_id, "in", link.target_slot), link.id)
+  }
+  for (const { from: [setter, input], to: [node, output] } of wiring.edges) {
+    join(vertex(setter, "in", input), vertex(node, "out", output), null)
+  }
+  const start = [...selected].flatMap((id) => wiring.split.has(id) ? ports.get(id) ?? [] : [id])
+  const owners = (found) => new Set([...found].map((key) => owner.get(key) ?? key))
   const crossed = new Set()
   return {
     selected: new Set(selected),
-    upstream: reach(selected, into, "origin_id", crossed),
-    downstream: reach(selected, from, "target_id", crossed),
+    upstream: owners(reach(start, into, crossed)),
+    downstream: owners(reach(start, from, crossed)),
     links: crossed,
   }
 }
 
-function group(map, key, link) {
+function group(map, key, item) {
   const list = map.get(key)
-  if (list) list.push(link)
-  else map.set(key, [link])
+  if (list) list.push(item)
+  else map.set(key, [item])
 }
 
-function reach(start, edges, end, crossed) {
+function reach(start, edges, crossed) {
   const seen = new Set(start)
   const found = new Set()
   const queue = [...start]
   while (queue.length) {
-    for (const link of edges.get(queue.pop()) ?? []) {
-      crossed.add(link.id)
-      const next = link[end]
+    for (const { next, id } of edges.get(queue.pop()) ?? []) {
+      if (id != null) crossed.add(id)
       if (seen.has(next)) continue
       seen.add(next)
       found.add(next)
@@ -108,6 +129,10 @@ export function valueSource(graph, link, prefix = "") {
       current = id == null ? null : inner.getLink(id)
       scope = inner
       path += node.id + ":"
+      continue
+    }
+    if (isSetter(node) || isGetter(node)) {
+      current = feedOf(scope, node, current.origin_slot)
       continue
     }
     if (node.isVirtualNode) {
