@@ -1,5 +1,6 @@
 import { app } from "../../scripts/app.js"
 import { api } from "../../scripts/api.js"
+import { installAttachedNotes } from "./attached_notes.js"
 import { cardMenu, installCards } from "./cards.js"
 import { installCompass } from "./compass.js"
 import { COMMAND, installCompassButton } from "./compass_button.js"
@@ -21,6 +22,8 @@ let compassButton = null
 
 let say = null
 
+let notes = null
+
 function redraw() {
   app.canvas?.setDirty?.(true, true)
   compassButton?.sync()
@@ -35,9 +38,11 @@ function addStyles() {
 
 const settings = reader((id) => app.extensionManager?.setting?.get?.(id))
 
-function cardChanged() {
+function graphChanged() {
   app.canvas?.setDirty?.(true, true)
-  app.extensionManager?.workflow?.activeWorkflow?.changeTracker?.checkState?.()
+  const tracker = app.extensionManager?.workflow?.activeWorkflow?.changeTracker
+  if (tracker?.captureCanvasState) tracker.captureCanvasState()
+  else tracker?.checkState?.()
 }
 
 app.registerExtension({
@@ -52,7 +57,8 @@ app.registerExtension({
     },
   ],
   getNodeMenuItems(node) {
-    return say && settings.cards() ? cardMenu(node, { say, changed: cardChanged }) : []
+    if (!say) return []
+    return [...(settings.cards() ? cardMenu(node, { say, changed: graphChanged }) : []), ...(notes?.menu(node) ?? [])]
   },
   async setup() {
     const canvas = app.canvas
@@ -79,6 +85,7 @@ app.registerExtension({
       redraw,
     })
     installCards(canvas, { enabled: settings.cards, size: settings.cardSize, count: settings.cardValues })
+    notes = installAttachedNotes(canvas, { enabled: settings.notes, say, changed: graphChanged })
     installInputValues(canvas, {
       enabled: settings.inputs,
       feed,

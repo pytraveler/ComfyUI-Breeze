@@ -3,8 +3,9 @@
 Frontend extensions that make a ComfyUI graph easier to read and to work in.
 They answer the questions a graph raises while you look at it: what feeds this
 node, what this wire carries, what this input gets, where the nodes went when
-the screen is empty, what a node is when zoomed out too far to read it, what
-the next run will compute again, what the run is computing now.
+the screen is empty, what a node is when zoomed out too far to read it, which
+node a note is about, what the next run will compute again, what the run is
+computing now.
 
 [Russian version](README_RU.md) | [Changelog](CHANGELOG.md)
 
@@ -141,6 +142,21 @@ trunk.*
 
   *Zoomed far out, every node keeps a title you can read and the values that
   matter most, the notes keep their text, and the groups their names.*
+- **Which node a note is about.** A note put beside a node stays there only
+  until the node moves. Right-click the note, choose Attach to a node and
+  click the node; or drag the note onto the node's title with Shift held,
+  and the note goes back to where it was, attached. From then on it keeps
+  its place beside the node wherever the node goes, dragged, snapped to the
+  grid or carried with its group, and a dashed line joins the two while
+  either is selected. A note and its node copied together paste as a pair
+  that is attached in the same way; a note copied alone pastes free. The
+  same menu detaches the note or attaches it to another node, and Settings >
+  Breeze > Notes turns all this off. It works the same with Nodes 2.0.
+
+  ![The Markdown note MOSS-Image capabilities and limits is selected, with its tables of resolution and strengths. From its right edge a dashed white line runs up to the corner of Load Diffusion Model in the Models group and ends in a small dot there](docs/attach_note.png)
+
+  *The selected note and the node it is attached to are joined by a dashed
+  line; when the node moves, the note moves with it.*
 - **What the next run computes again.** Rest the pointer on Run and every
   node the run needs is outlined: green where its result comes from the
   cache, orange where it is computed again, yellow where it is computed on
@@ -224,11 +240,12 @@ none.
 
 ## How it changes a workflow
 
-It does not. Everything is drawn over the canvas. The one thing kept is the
-choice of values a card shows, when you make one: it goes in the node's
-properties, which are saved with the workflow and never sent to run. No node
-is added and no link is rewired, so a workflow saved with these extensions
-loads and runs the same without them. The principle is borrowed from
+It does not. Everything is drawn over the canvas. The only things kept are
+the values you pick for a card and the node a note is attached to: they go
+in the properties of the node and of the note, which are saved with the
+workflow and never sent to run. No node is added and no link is rewired, so
+a workflow saved with these extensions loads and runs the same without them,
+and an attached note is an ordinary note there that stays where it is. The principle is borrowed from
 [Zip Ties](https://github.com/safzanpirani/comfyui-zip-ties).
 
 ## Install

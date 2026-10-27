@@ -10,6 +10,17 @@ that disagrees with
 `pyproject.toml`, or one that either changelog has no section for. The section it
 finds is published as the release notes, English above Russian.
 
+## 0.7.0 - 2026-10-27
+
+- **Which node a note is about.** A note can be attached to a node, from
+  the note's menu (Attach to a node, then a click on the node) or by
+  dragging the note onto the node's title with Shift held, after which the
+  note goes back to where it was. An attached note keeps its place beside
+  the node wherever the node goes, a dashed line joins the two while either
+  is selected, and a note copied with its node pastes attached to the copy.
+  The link is kept in the note's properties; without Breeze the note is an
+  ordinary note. Settings > Breeze > Notes turns it off.
+
 ## 0.6.0 - 2026-10-27
 
 - **What a node is from far away.** Zoomed out to where ComfyUI stops

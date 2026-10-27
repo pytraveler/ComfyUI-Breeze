@@ -100,3 +100,8 @@
 .breeze-card-values {
   opacity: 0.85;
 }
+
+body.breeze-picking,
+body.breeze-picking * {
+  cursor: crosshair !important;
+}

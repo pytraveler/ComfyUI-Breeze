@@ -17,6 +17,7 @@ export const LIGHT_REPEATS = "Breeze.RunLight.Repeats"
 export const CARDS = "Breeze.Cards.Enabled"
 export const CARD_SIZE = "Breeze.Cards.TitleSize"
 export const CARD_VALUES = "Breeze.Cards.Values"
+export const NOTES = "Breeze.Notes.Attach"
 
 export const LOCALE = "Comfy.Locale"
 export const CONTROL = "Comfy.WidgetControlMode"
@@ -41,6 +42,7 @@ export const DEFAULTS = {
   [CARDS]: true,
   [CARD_SIZE]: 14,
   [CARD_VALUES]: 2,
+  [NOTES]: true,
 }
 
 export const FORECAST_MODES = ["run", "always", "off"]
@@ -247,6 +249,15 @@ export function definitions(redraw) {
       defaultValue: DEFAULTS[CARD_VALUES],
       onChange: redraw,
     },
+    {
+      id: NOTES,
+      category: ["Breeze", "Notes", "Attach"],
+      name: "Let a note be attached to a node, to move along with it",
+      tooltip: "Right-click a note and choose Attach to a node, then click the node; or drag the note onto the node's title with Shift held, and it goes back to where it was, attached. An attached note keeps its place beside the node when the node moves, and a dashed line joins the two while either is selected. Without Breeze the note is an ordinary note that stays where it is.",
+      type: "boolean",
+      defaultValue: DEFAULTS[NOTES],
+      onChange: redraw,
+    },
   ]
   return all.map((item, index) => ({ ...item, sortOrder: all.length - index }))
 }
@@ -292,6 +303,7 @@ export function reader(get) {
       const value = Math.round(Number(read(CARD_VALUES)))
       return Number.isFinite(value) ? Math.min(CARD_VALUES_MAX, Math.max(0, value)) : DEFAULTS[CARD_VALUES]
     },
+    notes: () => Boolean(read(NOTES)),
     controlBefore: () => read(CONTROL) === "before",
     locale: () => {
       const value = read(LOCALE)

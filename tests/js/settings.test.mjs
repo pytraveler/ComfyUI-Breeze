@@ -3,7 +3,7 @@ import { test } from "node:test"
 
 import {
   ARROWS, BOTH, CARD_SIZE, CARD_VALUES, CARDS, COMPASS, COMPASS_MODES, COMPASS_NOTE, CONTROL, DEFAULTS, DOWNSTREAM, FADE, FORECAST, FORECAST_MODES, GLOW, INPUTS, LIGHT,
-  LIGHT_REPEATS, LIGHT_SPEED, LINEAGE, LOCALE, TIP, TRUNKS, UPSTREAM,
+  LIGHT_REPEATS, LIGHT_SPEED, LINEAGE, LOCALE, NOTES, TIP, TRUNKS, UPSTREAM,
   definitions, hexColor, reader,
 } from "../../web/js/settings.js"
 
@@ -41,7 +41,7 @@ test("every setting that changes the picture redraws it", () => {
   const redraw = () => {}
   const redrawn = definitions(redraw).filter((item) => item.onChange === redraw)
   assert.deepEqual(redrawn.map((item) => item.id), [
-    LINEAGE, FADE, GLOW, UPSTREAM, DOWNSTREAM, BOTH, TRUNKS, INPUTS, FORECAST, COMPASS, LIGHT, CARDS, CARD_SIZE, CARD_VALUES,
+    LINEAGE, FADE, GLOW, UPSTREAM, DOWNSTREAM, BOTH, TRUNKS, INPUTS, FORECAST, COMPASS, LIGHT, CARDS, CARD_SIZE, CARD_VALUES, NOTES,
   ])
 })
 
@@ -86,6 +86,7 @@ test("a setting never changed reads as its default", () => {
   assert.equal(settings.cards(), true)
   assert.equal(settings.cardSize(), 14)
   assert.equal(settings.cardValues(), 2)
+  assert.equal(settings.notes(), true)
   assert.equal(settings.controlBefore(), false)
 })
 
@@ -93,7 +94,8 @@ test("the values stored are what the extensions get", () => {
   const settings = reader(stored({
     [LINEAGE]: false, [FADE]: 35, [GLOW]: 0, [UPSTREAM]: "00ff00", [DOWNSTREAM]: "ff000080", [TIP]: false, [ARROWS]: false,
     [TRUNKS]: false, [INPUTS]: false, [FORECAST]: "always", [COMPASS]: "always", [COMPASS_NOTE]: false, [LIGHT]: false,
-    [LIGHT_SPEED]: 250, [LIGHT_REPEATS]: 5, [CARDS]: false, [CARD_SIZE]: 20, [CARD_VALUES]: 0, [CONTROL]: "before",
+    [LIGHT_SPEED]: 250, [LIGHT_REPEATS]: 5, [CARDS]: false, [CARD_SIZE]: 20, [CARD_VALUES]: 0, [NOTES]: false,
+    [CONTROL]: "before",
   }))
   assert.equal(settings.lineage(), false)
   assert.equal(settings.fade(), 0.35)
@@ -112,6 +114,7 @@ test("the values stored are what the extensions get", () => {
   assert.equal(settings.cards(), false)
   assert.equal(settings.cardSize(), 20)
   assert.equal(settings.cardValues(), 0)
+  assert.equal(settings.notes(), false)
   assert.equal(settings.controlBefore(), true)
 })
 

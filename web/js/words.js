@@ -36,6 +36,10 @@ export const ENGLISH = {
   compassGroup: "Untitled group",
   cardMenu: "Card when zoomed out",
   cardAuto: "Pick the values automatically",
+  noteAttach: "Attach to a node",
+  noteAttachAnother: "Attach to another node",
+  noteDetach: 'Detach from "{node}"',
+  notePick: "Click the node to attach the note to. Esc cancels.",
 }
 
 export async function fetchTranslations(fetchApi) {
