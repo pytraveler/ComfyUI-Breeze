@@ -1,18 +1,23 @@
 import { app } from "../../scripts/app.js"
 import { api } from "../../scripts/api.js"
+import { installCompass } from "./compass.js"
+import { COMMAND, installCompassButton } from "./compass_button.js"
 import { fetchForecast, movingNodes } from "./forecast.js"
 import { installForecast } from "./forecast_view.js"
 import { installLineage } from "./lineage.js"
 import { fetchOutputs, wireValue } from "./last_run.js"
-import { definitions, reader } from "./settings.js"
+import { COMPASS, definitions, reader } from "./settings.js"
 import { installTrunks } from "./trunks.js"
 import { installWireArrows } from "./wire_arrows.js"
 import { watchWires } from "./wire_hover.js"
 import { installWireTip } from "./wire_tip.js"
 import { fetchTranslations, speaker, wordsFor } from "./words.js"
 
+let compassButton = null
+
 function redraw() {
   app.canvas?.setDirty?.(true, true)
+  compassButton?.sync()
 }
 
 function addStyles() {
@@ -27,6 +32,14 @@ const settings = reader((id) => app.extensionManager?.setting?.get?.(id))
 app.registerExtension({
   name: "darkil.Breeze",
   settings: definitions(redraw),
+  commands: [
+    {
+      id: COMMAND,
+      label: "Show or hide the compass",
+      icon: "icon-[lucide--compass]",
+      function: () => compassButton?.toggle(),
+    },
+  ],
   async setup() {
     const canvas = app.canvas
     addStyles()
@@ -57,6 +70,12 @@ app.registerExtension({
       routeOf: trunks.routeOf,
     })
     const hover = watchWires(canvas, [arrows, tip])
+    installCompass(canvas, { mode: settings.compass })
+    compassButton = installCompassButton({
+      mode: settings.compass,
+      set: (value) => app.extensionManager.setting.set(COMPASS, value),
+      say,
+    })
     const forecast = installForecast(canvas, {
       mode: settings.forecast,
       glow: settings.glow,

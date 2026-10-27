@@ -2,7 +2,8 @@ import assert from "node:assert/strict"
 import { test } from "node:test"
 
 import {
-  ARROWS, BOTH, CONTROL, DEFAULTS, DOWNSTREAM, FADE, FORECAST, FORECAST_MODES, GLOW, LINEAGE, LOCALE, TIP, TRUNKS, UPSTREAM,
+  ARROWS, BOTH, COMPASS, COMPASS_MODES, CONTROL, DEFAULTS, DOWNSTREAM, FADE, FORECAST, FORECAST_MODES, GLOW, LINEAGE, LOCALE, TIP,
+  TRUNKS, UPSTREAM,
   definitions, hexColor, reader,
 } from "../../web/js/settings.js"
 
@@ -39,7 +40,7 @@ test("a colour is stored the way the colour picker stores one", () => {
 test("every setting that changes the picture redraws it", () => {
   const redraw = () => {}
   const redrawn = definitions(redraw).filter((item) => item.onChange === redraw)
-  assert.deepEqual(redrawn.map((item) => item.id), [LINEAGE, FADE, GLOW, UPSTREAM, DOWNSTREAM, BOTH, TRUNKS, FORECAST])
+  assert.deepEqual(redrawn.map((item) => item.id), [LINEAGE, FADE, GLOW, UPSTREAM, DOWNSTREAM, BOTH, TRUNKS, FORECAST, COMPASS])
 })
 
 test("a list setting offers each of its values once, the default among them", () => {
@@ -51,6 +52,8 @@ test("a list setting offers each of its values once, the default among them", ()
   }
   const forecast = definitions(() => {}).find((item) => item.id === FORECAST)
   assert.deepEqual(forecast.options.map((option) => option.value), FORECAST_MODES)
+  const compass = definitions(() => {}).find((item) => item.id === COMPASS)
+  assert.deepEqual(compass.options.map((option) => option.value), COMPASS_MODES)
 })
 
 test("six or eight hex digits are a colour, with or without the '#'", () => {
@@ -72,13 +75,14 @@ test("a setting never changed reads as its default", () => {
   assert.equal(settings.arrows(), true)
   assert.equal(settings.trunks(), true)
   assert.equal(settings.forecast(), "run")
+  assert.equal(settings.compass(), "empty")
   assert.equal(settings.controlBefore(), false)
 })
 
 test("the values stored are what the extensions get", () => {
   const settings = reader(stored({
     [LINEAGE]: false, [FADE]: 35, [GLOW]: 0, [UPSTREAM]: "00ff00", [DOWNSTREAM]: "ff000080", [TIP]: false, [ARROWS]: false,
-    [TRUNKS]: false, [FORECAST]: "always", [CONTROL]: "before",
+    [TRUNKS]: false, [FORECAST]: "always", [COMPASS]: "always", [CONTROL]: "before",
   }))
   assert.equal(settings.lineage(), false)
   assert.equal(settings.fade(), 0.35)
@@ -88,6 +92,7 @@ test("the values stored are what the extensions get", () => {
   assert.equal(settings.arrows(), false)
   assert.equal(settings.trunks(), false)
   assert.equal(settings.forecast(), "always")
+  assert.equal(settings.compass(), "always")
   assert.equal(settings.controlBefore(), true)
 })
 
@@ -100,6 +105,7 @@ test("a value that makes no sense gives the default, and a fade stays in range",
   assert.equal(reader(stored({ [GLOW]: -4 })).glow(), 0)
   assert.equal(reader(stored({ [GLOW]: "wide" })).glow(), 0)
   assert.equal(reader(stored({ [FORECAST]: "sometimes" })).forecast(), "run")
+  assert.equal(reader(stored({ [COMPASS]: "north" })).compass(), "empty")
 })
 
 test("settings not there to ask read as the defaults", () => {

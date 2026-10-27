@@ -3,7 +3,8 @@
     "Breeze": "Breeze",
     "Lineage": "Цепочка зависимостей",
     "Wires": "Провода",
-    "Forecast": "Прогноз кэша"
+    "Forecast": "Прогноз кэша",
+    "Compass": "Компас"
   },
   "breeze": {
     "value": "значение",
@@ -32,6 +33,8 @@
     "durationUnderSecond": "<1 с",
     "durationSeconds": "{n} с",
     "durationMinutes": "{m} мин {s} с",
-    "durationHours": "{h} ч {m} мин"
+    "durationHours": "{h} ч {m} мин",
+    "compassShow": "Показать компас",
+    "compassHide": "Скрыть компас"
   }
 }

@@ -8,6 +8,7 @@ export const TIP = "Breeze.WireTip.Enabled"
 export const ARROWS = "Breeze.WireArrows.Enabled"
 export const TRUNKS = "Breeze.WireTrunks.Enabled"
 export const FORECAST = "Breeze.Forecast.Mode"
+export const COMPASS = "Breeze.Compass.Mode"
 
 export const LOCALE = "Comfy.Locale"
 export const CONTROL = "Comfy.WidgetControlMode"
@@ -23,9 +24,12 @@ export const DEFAULTS = {
   [ARROWS]: true,
   [TRUNKS]: true,
   [FORECAST]: "run",
+  [COMPASS]: "empty",
 }
 
 export const FORECAST_MODES = ["run", "always", "off"]
+
+export const COMPASS_MODES = ["empty", "always", "off"]
 
 const FADE_MAX = 90
 
@@ -130,6 +134,20 @@ export function definitions(redraw) {
       defaultValue: DEFAULTS[FORECAST],
       onChange: redraw,
     },
+    {
+      id: COMPASS,
+      category: ["Breeze", "Compass", "Mode"],
+      name: "Point to the nodes off screen",
+      tooltip: "Arrows at the edges of the canvas point to the nodes out of view, each with the name of their group or how many there are; a click on one carries the view there.",
+      type: "combo",
+      options: [
+        { text: "When no node is in view", value: "empty" },
+        { text: "Always", value: "always" },
+        { text: "Off", value: "off" },
+      ],
+      defaultValue: DEFAULTS[COMPASS],
+      onChange: redraw,
+    },
   ]
   return all.map((item, index) => ({ ...item, sortOrder: all.length - index }))
 }
@@ -159,6 +177,10 @@ export function reader(get) {
     forecast: () => {
       const value = read(FORECAST)
       return FORECAST_MODES.includes(value) ? value : DEFAULTS[FORECAST]
+    },
+    compass: () => {
+      const value = read(COMPASS)
+      return COMPASS_MODES.includes(value) ? value : DEFAULTS[COMPASS]
     },
     controlBefore: () => read(CONTROL) === "before",
     locale: () => {

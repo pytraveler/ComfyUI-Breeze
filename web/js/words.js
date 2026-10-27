@@ -30,6 +30,8 @@ export const ENGLISH = {
   durationSeconds: "{n} s",
   durationMinutes: "{m} min {s} s",
   durationHours: "{h} h {m} min",
+  compassShow: "Show the compass",
+  compassHide: "Hide the compass",
 }
 
 export async function fetchTranslations(fetchApi) {

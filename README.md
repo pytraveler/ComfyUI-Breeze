@@ -50,6 +50,18 @@ trunk.*
   tooltip and the arrows find the trunk like any wire, and the arrow ahead on
   it frames every input it splits to. A wire through a reroute of yours keeps
   its own line.
+- **Where the nodes went.** When no node is in view, arrows at the edges
+  of the canvas point to the ones off screen: one to each group, with its
+  name, and one to each cluster of nodes outside any group, with how many
+  there are, or with the node's own title when it stands alone. A click
+  carries the view there, as the arrows on a wire do. Arrows that would
+  cover each other become one, which frames everything they pointed to, and
+  all of them keep clear of the panels and toolbars over the canvas. Under
+  Settings > Breeze > Compass they can stay all the time instead, faded
+  while nodes are in view. A button with a compass on it, next to the
+  minimap's in the toolbar at the bottom right of the canvas, turns them off
+  and back on, and the command behind it can be given a key under Settings >
+  Keybinding.
 - **What the next run computes again.** Rest the pointer on Run and every
   node the run needs is outlined: green where its result comes from the
   cache, orange where it is computed again, yellow where it is computed on
@@ -72,8 +84,6 @@ fade, the glow's radius and the three outline colours are set; a radius of 0
 turns the glow off. A colour given in eight hex digits
 carries an alpha as well. With ComfyUI set to Russian the settings and the
 tooltip are in Russian; in any other language they read in English.
-
-Next on the list: a compass to the nodes off screen.
 
 ### Where the values on a wire come from
 

@@ -10,6 +10,17 @@ that disagrees with
 `pyproject.toml`, or one that either changelog has no section for. The section it
 finds is published as the release notes, English above Russian.
 
+## 0.3.0 - 2026-10-27
+
+- **Where the nodes went.** With no node in view, arrows at the edges of the
+  canvas point to the nodes off screen, one to each group by its name and
+  one to each cluster of loose nodes by their number, and a click carries
+  the view there. Arrows that would cover each other become one, and they
+  all keep clear of the panels over the canvas. Settings > Breeze > Compass
+  keeps them all the time instead, faded while nodes are in view, or turns
+  them off, and so does a compass button in the canvas toolbar at the bottom
+  right, whose command can be given a key.
+
 ## 0.2.0 - 2026-10-27
 
 - **What the next run computes again.** Resting the pointer on Run outlines

@@ -1,6 +1,6 @@
 [project]
 name = "comfyui-breeze"
-version = "0.2.0"
+version = "0.3.0"
 description = "Frontend extensions that make a ComfyUI graph easier to read and work in. They draw over the canvas; the workflow that runs is never changed."
 readme = "README.md"
 license = { file = "LICENSE" }
