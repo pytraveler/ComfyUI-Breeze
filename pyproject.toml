@@ -1,7 +1,7 @@
 [project]
 name = "comfyui-breeze"
-version = "0.7.1"
-description = "Frontend extensions that make a ComfyUI graph easier to read and work in. They draw over the canvas; the workflow that runs is never changed."
+version = "0.8.0"
+description = "Frontend extensions to read and navigate ComfyUI graphs, connect distant nodes, collect workflow notes, and compare and restore edited fields."
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"

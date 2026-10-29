@@ -4,7 +4,7 @@ import { test } from "node:test"
 import {
   lineage, linkEnds, roleOf, sameLineage, selectedNodeIds, valueSource,
 } from "../../web/js/graph_walk.js"
-import { wiring } from "../../web/js/set_get.js"
+import { edgeKey, virtualRole, wiring } from "../../web/js/set_get.js"
 import { speaker } from "../../web/js/words.js"
 
 function link(id, origin, originSlot, target, targetSlot, type = "IMAGE") {
@@ -172,9 +172,15 @@ test("a selection goes through Set and Get nodes slot by slot, as the wires they
   assert.deepEqual([...encode.upstream].sort(), [2, 3, 4])
   assert.deepEqual([...encode.downstream].sort(), [6])
   assert.deepEqual([...encode.links].sort(), [11, 13, 15, 16])
+  assert.equal(virtualRole(encode, edgeKey(3, 1, 4, 1)), "up")
+  assert.equal(virtualRole(encode, edgeKey(3, 0, 4, 0)), null)
   const model = lineage(g.links.values(), new Set([1]), wiring(g))
   assert.deepEqual([...model.downstream].sort(), [3, 4, 6])
   assert.deepEqual([...model.links].sort(), [10, 12])
+  assert.equal(virtualRole(model, edgeKey(3, 0, 4, 0)), "down")
+  assert.equal(virtualRole(model, edgeKey(3, 1, 4, 1)), null)
+  const both = lineage(g.links.values(), new Set([1, 6]), wiring(g))
+  assert.equal(virtualRole(both, edgeKey(3, 0, 4, 0)), "both")
   const set = lineage(g.links.values(), new Set([3]), wiring(g))
   assert.deepEqual([...set.upstream].sort(), [1, 2])
   assert.deepEqual([...set.downstream].sort(), [4, 6, 7])

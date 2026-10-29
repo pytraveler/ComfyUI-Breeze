@@ -18,6 +18,7 @@ export const CARDS = "Breeze.Cards.Enabled"
 export const CARD_SIZE = "Breeze.Cards.TitleSize"
 export const CARD_VALUES = "Breeze.Cards.Values"
 export const NOTES = "Breeze.Notes.Attach"
+export const QUICK_CONNECT = "Breeze.Wires.QuickConnect"
 
 export const LOCALE = "Comfy.Locale"
 export const CONTROL = "Comfy.WidgetControlMode"
@@ -43,6 +44,7 @@ export const DEFAULTS = {
   [CARD_SIZE]: 14,
   [CARD_VALUES]: 2,
   [NOTES]: true,
+  [QUICK_CONNECT]: true,
 }
 
 export const FORECAST_MODES = ["run", "always", "off"]
@@ -138,6 +140,14 @@ export function definitions(redraw) {
       tooltip: "One points along the wire to where it comes from, the other to where it goes; a click on either carries the view there.",
       type: "boolean",
       defaultValue: DEFAULTS[ARROWS],
+    },
+    {
+      id: QUICK_CONNECT,
+      category: ["Breeze", "Wires", "Quick connect"],
+      name: "Enable quick connect",
+      tooltip: "Search compatible ports in the current graph, connect one output to several inputs, or open the usual node search. Occupied inputs require an explicit replacement; Esc leaves existing wires in place.",
+      type: "boolean",
+      defaultValue: DEFAULTS[QUICK_CONNECT],
     },
     {
       id: TRUNKS,
@@ -253,7 +263,7 @@ export function definitions(redraw) {
       id: NOTES,
       category: ["Breeze", "Notes", "Attach"],
       name: "Let a note be attached to a node, to move along with it",
-      tooltip: "Right-click a note and choose Attach to a node, then click the node; or drag the note onto the node's title with Shift held, and it goes back to where it was, attached. An attached note keeps its place beside the node when the node moves, and a dashed line joins the two while either is selected. Without Breeze the note is an ordinary note that stays where it is.",
+      tooltip: "Right-click a note and choose Attach to a node, then click the node; or drag the note onto the node's title with Shift held. The note follows the node. Fold into an info icon hides an attached note behind a badge for reading and unfolding. Turning this off shows folded notes again. Without Breeze notes stay visible as ordinary notes.",
       type: "boolean",
       defaultValue: DEFAULTS[NOTES],
       onChange: redraw,
@@ -304,6 +314,7 @@ export function reader(get) {
       return Number.isFinite(value) ? Math.min(CARD_VALUES_MAX, Math.max(0, value)) : DEFAULTS[CARD_VALUES]
     },
     notes: () => Boolean(read(NOTES)),
+    quickConnect: () => Boolean(read(QUICK_CONNECT)),
     controlBefore: () => read(CONTROL) === "before",
     locale: () => {
       const value = read(LOCALE)

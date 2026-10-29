@@ -23,6 +23,27 @@ trunk.*
 
 ## What it does
 
+- **Connect without crossing the graph.** Drop a wire on empty canvas to
+  search compatible ports on existing nodes by title, ID, port or group.
+  Select one or several inputs, then click Connect. Drag from an input to
+  choose a single output instead. Show on graph visits a candidate; closing
+  the picker after connecting or cancelling restores the original view.
+  Occupied inputs are hidden until requested and require an explicit
+  replacement. Existing connections are marked. Esc leaves the wires as
+  they were, including a wire being moved, and Ctrl+Z undoes a whole batch.
+  Add a new node at the top opens ComfyUI's usual search or connection menu.
+  The wider picker uses larger node names and labels wildcard types as any.
+  Works in the current graph, inside subgraphs and with Nodes 2.0; external
+  subgraph ports are ordinary candidates. It does not create ports across
+  subgraph boundaries. Drags from subgraph boundary sockets and native
+  drags of several existing wires keep ComfyUI's normal behaviour.
+  Turn off Enable quick connect under Settings > Breeze > Wires.
+
+  ![Quick connect in Russian: compatible inputs for the STRING output of String (User Prompt), with selection boxes, Show on graph buttons, search and Add a new node at the top](docs/quick_connect.png)
+
+  *Choose compatible inputs on existing nodes without dragging a wire across
+  the graph; Show on graph locates a candidate before connecting.*
+
 - **What feeds a node, and what it feeds.** Select a node and everything it
   depends on is outlined in blue, everything that depends on it in amber, each
   with a soft glow of its colour, and the rest of the graph fades, wires and
@@ -106,7 +127,10 @@ trunk.*
   node, as the arrow ahead on a wire into a Set node does to every Get node
   that reads that input. A Get node is paired with the Set node of its name
   in the same graph, so one inside a subgraph whose Set node is outside it
-  is not followed.
+  is not followed. While a selection crosses a Set/Get pair, a dashed line
+  joins the matching ports in the upstream/downstream colour. Unrelated
+  virtual lines drawn by KJNodes or darkilNodes with Show links fade with
+  the rest of the graph; active pairs use Breeze's dashed line instead.
 - **Where the nodes went.** When no node is in view, arrows at the edges
   of the canvas point to the ones off screen: one to each group, with its
   name, and one to each cluster of nodes outside any group, with how many
@@ -166,6 +190,17 @@ trunk.*
   that is attached in the same way; a note copied alone pastes free. The
   same menu detaches the note or attaches it to another node, and Settings >
   Breeze > Notes turns all this off. It works the same with Nodes 2.0.
+  Choose Fold into an info icon in an attached note's menu to hide it behind
+  an info badge beside its node's title. The badge counts folded notes;
+  click it to read them, then Unfold on graph to restore one. Folding is
+  undoable and saved with the workflow. Notes remain available in Workflow
+  README; disabling the feature, deleting their host, or opening without
+  Breeze makes them visible again.
+
+  ![An info badge above the upper-right corner of a node with a folded attached note](docs/note_icon.png)
+
+  *Click the info badge to read folded notes or unfold them on the graph.
+  Its size follows the graph's zoom.*
 
   ![The Markdown note MOSS-Image capabilities and limits is selected, with its tables of resolution and strengths. From its right edge a dashed white line runs up to the corner of Load Diffusion Model in the Models group and ends in a small dot there](docs/attach_note.png)
 
@@ -190,7 +225,39 @@ trunk.*
   saves the image again; Resolution Selector comes from the cache, and the
   rows of width and height say what it hands on: 1024.*
 
-Each can be switched off under Settings > Breeze, which is also where the
+- **Read the workflow's notes.** Open Workflow README (the book icon in the
+  sidebar) to read all notes at a fixed text size, including notes inside
+  subgraphs. Search matches their titles, text and subgraph names. Markdown
+  notes keep their formatting. Click a heading to fold or unfold a section,
+  or use Collapse all / Expand all. Search temporarily opens matching notes
+  and preserves the previous folded sections when cleared. Section states
+  are remembered per workflow during this session. Show on graph visits
+  the original note, unfolding it from its info badge if needed.
+  Older frontends without the Markdown rendering API show the original text.
+
+  ![The Workflow README sidebar with a search field and the Fibo 2.0 Edit note rendered with headings, bold text, code and a bulleted list](docs/workflow_readme.png)
+
+  *Read a workflow's notes in the sidebar, with Markdown formatting and
+  search, regardless of the graph's zoom.*
+
+- **See what changed.** Open What changed (the history icon in the sidebar)
+  to compare with the last saved or opened state. Each edited field shows
+  its old and current values. Restore this field changes just that value;
+  Ctrl+Z undoes the restoration. Widget values, titles, modes, positions,
+  sizes and colours can be restored individually. Added or removed nodes,
+  changed custom properties and connections are listed for review, without
+  a restore button. While the panel is open, changed widget fields are
+  marked on the graph too. To compare against a template after saving your
+  edits, give the starting point a name and choose Remember current workflow.
+  The reference is kept with the workflow on save; remembering again replaces
+  it. Switch between the saved state and that reference using the dropdown.
+
+  ![The What changed sidebar in Russian, comparing with the last saved or opened state: Load Image (Temp) has changed image and darkil_temp_info fields, with old and current values and a Restore this field button](docs/what_changed.png)
+
+  *Review old and current field values and restore an individual change;
+  the controls above let you remember a named reference for comparison.*
+
+The canvas features can be switched off under Settings > Breeze, which is also where the
 fade, the glow's radius, the three outline colours, the pace of the light
 and the size of a card's title are set; a radius of 0
 turns the glow off. A colour given in eight hex digits
@@ -254,12 +321,15 @@ none.
 
 ## How it changes a workflow
 
-It does not. Everything is drawn over the canvas. The only things kept are
-the values you pick for a card and the node a note is attached to: they go
-in the properties of the node and of the note, which are saved with the
-workflow and never sent to run. No node is added and no link is rewired, so
-a workflow saved with these extensions loads and runs the same without them,
-and an attached note is an ordinary note there that stays where it is. The principle is borrowed from
+The visual features draw over the canvas. Card choices, attached-note
+links and folded-note states are kept in node properties; a remembered comparison reference goes
+in `extra.breeze_reference`. These are workflow metadata, not execution
+inputs. The What changed panel edits a field only when you click its restore
+button, just as editing that field yourself would, with normal undo support.
+Quick connect creates or replaces ordinary links only when you choose a
+destination; it adds no helper nodes. A saved workflow loads and runs
+without Breeze, and an attached note remains an ordinary note there.
+The visual principle is borrowed from
 [Zip Ties](https://github.com/safzanpirani/comfyui-zip-ties).
 
 ## Install

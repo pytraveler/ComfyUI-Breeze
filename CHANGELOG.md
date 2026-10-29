@@ -10,6 +10,43 @@ that disagrees with
 `pyproject.toml`, or one that either changelog has no section for. The section it
 finds is published as the release notes, English above Russian.
 
+## 0.8.0 - 2026-10-29
+
+- **Quick connect.** Drop a wire on empty canvas to search compatible ports
+  on existing nodes, including nodes in the current subgraph. Connect one
+  output to several inputs in one undoable action, choose a source from an
+  input, locate a candidate, or open the usual node search. Occupied inputs
+  require an explicit replacement; cancelling a moved wire preserves it.
+  Supports Nodes 2.0 and can be disabled in Breeze's wire settings.
+  Multiple selection is available immediately, Add a new node is at the
+  top, and closing the picker after a preview restores the original view.
+  The wider picker has larger node names and readable wildcard type labels.
+  Show on graph pulses the target outline after the camera arrives, using
+  the same glow as wire navigation.
+- **Workflow README.** A sidebar collects notes from the workflow and its
+  subgraphs at a readable size, with text search, Markdown formatting and a
+  Show on graph button to visit the original note. Sections fold separately
+  or all at once; search opens matching notes without losing the folded
+  state of the full list. Section states are kept per workflow for the session.
+- **Folded notes.** An attached note can fold into an info badge beside its
+  host's title, on the canvas and in Nodes 2.0. The badge opens all folded
+  notes for reading, with Markdown and individual Unfold on graph buttons.
+  Folding supports undo and saving; orphaned notes become visible again.
+  The info badge and its offset scale with the node when zooming.
+- **Visible Set/Get relations.** Selection paths draw dashed virtual links
+  between the exact Set/Get ports. Unrelated KJNodes/darkilNodes Show links
+  lines fade; active pairs are replaced by the dashed relation, with no
+  changes to the actual graph. Pairs remain scoped to the current graph.
+- **What changed.** A sidebar compares node fields with the last saved or
+  opened state, shows old and current values, and restores individual widget
+  values, titles, modes, positions, sizes and colours with undo support.
+  Changed widget fields are marked while the panel is open, on the canvas
+  and in Nodes 2.0. Added and removed nodes, changed properties and rewired
+  connections are listed for review.
+- A named reference can be remembered in the workflow to compare later
+  edits with a starting template even after saving. Both panels follow the
+  active workflow and include its subgraphs.
+
 ## 0.7.1 - 2026-10-28
 
 - **Where a hidden wire goes.** The Set and Get nodes of KJNodes and

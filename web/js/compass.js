@@ -34,7 +34,7 @@ const TIMES = String.fromCharCode(0xd7)
 
 const PASS = '[data-node-id], .dom-widget, .breeze-wire-tip, [role="tooltip"]'
 
-export function installCompass(canvas, { mode, note = () => true, say = english }) {
+export function installCompass(canvas, { mode, note = () => true, say = english, hidden: hiddenNode = () => false }) {
   const element = canvas.canvas
   const proto = Object.getPrototypeOf(canvas)
   const { drawFrontCanvas } = proto
@@ -101,7 +101,7 @@ export function installCompass(canvas, { mode, note = () => true, say = english 
 
   const survey = () => {
     const current = mode()
-    const nodes = canvas.graph?.nodes ?? []
+    const nodes = (canvas.graph?.nodes ?? []).filter((node) => !hiddenNode(node))
     if (current === "off" || stop || !nodes.length) return []
     const open = clear()
     const safe = inset(open, EDGE_PX)

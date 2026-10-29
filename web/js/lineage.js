@@ -1,6 +1,6 @@
 import { drawGlow } from "./glow.js"
 import { lineage, roleOf, sameLineage, selectedNodeIds } from "./graph_walk.js"
-import { wiring } from "./set_get.js"
+import { matchesVirtual, virtualPairs, virtualRole, wiring } from "./set_get.js"
 import { nodeSelector, outlined, rule, styleSheet, vueNodes } from "./vue_nodes.js"
 
 const BOX = 1
@@ -18,6 +18,7 @@ export function installLineage(canvas, { enabled, fade, colors, glow = () => 0 }
   const state = {
     lineage: null, graph: null, fade: 0, colors: {}, glow: 0, vue: false, faded: new Map(),
     sheet: styleSheet(), styled: null,
+    pairs: [],
   }
   const { draw, renderLink, drawNode } = proto
 
@@ -37,8 +38,13 @@ export function installLineage(canvas, { enabled, fade, colors, glow = () => 0 }
 
   proto.renderLink = function (ctx, a, b, link) {
     const found = state.lineage
-    if (this !== canvas || !found || !link || lit(found, link, arguments[9])) {
+    if (this !== canvas || !found || (link && lit(found, link, arguments[9]))) {
       return renderLink.apply(this, arguments)
+    }
+    if (!link) {
+      const pairs = state.pairs.filter((pair) => matchesVirtual(pair, a, b))
+      if (!pairs.length) return renderLink.apply(this, arguments)
+      if (pairs.some((pair) => virtualRole(found, pair.key))) return
     }
     const alpha = ctx.globalAlpha
     ctx.globalAlpha = alpha * dimmed(state)
@@ -47,6 +53,12 @@ export function installLineage(canvas, { enabled, fade, colors, glow = () => 0 }
     } finally {
       ctx.globalAlpha = alpha
     }
+  }
+
+  const onRender = canvas.onRender
+  canvas.onRender = function (...args) {
+    onRender?.apply(this, args)
+    if (state.lineage && this === canvas) paintVirtual(this, state)
   }
 
   proto.drawNode = function (node, ctx) {
@@ -71,10 +83,40 @@ function dimmed(state) {
   return Math.max(LINK_FLOOR, 1 - state.fade)
 }
 
+function paintVirtual(canvas, state) {
+  const { ctx, ds } = canvas
+  if (!ctx || !ds?.toCanvasContext || canvas.links_render_mode === -1) return
+  ctx.save()
+  ds.toCanvasContext(ctx)
+  const scale = ds.scale || 1
+  ctx.lineWidth = 1.5 / scale
+  ctx.setLineDash([6 / scale, 5 / scale])
+  ctx.globalAlpha = 0.85
+  for (const pair of state.pairs) {
+    const role = virtualRole(state.lineage, pair.key)
+    if (!role) continue
+    const { setter, getter, input, output } = pair
+    const a = setter.getConnectionPos?.(Boolean(!setter.outputs?.[input]), input)
+    const b = getter.getConnectionPos?.(false, output)
+    if (!a || !b) continue
+    const start = [setter.boundingRect[0] + setter.boundingRect[2], a[1]]
+    const end = [getter.boundingRect[0], b[1]]
+    const bend = Math.max(40, Math.abs(end[0] - start[0]) * 0.4)
+    ctx.strokeStyle = state.colors[role]
+    ctx.beginPath()
+    ctx.moveTo(...start)
+    ctx.bezierCurveTo(start[0] + bend, start[1], end[0] - bend, end[1], ...end)
+    ctx.stroke()
+  }
+  ctx.restore()
+}
+
 function update(canvas, state, on, fade, vue) {
   const graph = canvas.graph ?? null
   const ids = on && graph ? selectedNodeIds(graph, canvas.selectedItems) : null
-  const next = ids?.size ? lineage(graph.links.values(), ids, wiring(graph)) : null
+  const wires = ids?.size ? wiring(graph) : null
+  const next = wires ? lineage(graph.links.values(), ids, wires) : null
+  state.pairs = wires ? virtualPairs(graph, wires.edges) : []
   const changed = state.graph !== graph || state.fade !== fade || state.vue !== vue
     || !sameLineage(state.lineage, next)
   state.graph = graph

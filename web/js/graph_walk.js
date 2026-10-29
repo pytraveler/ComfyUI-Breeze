@@ -1,4 +1,4 @@
-import { feedOf, isGetter, isSetter } from "./set_get.js"
+import { edgeKey, feedOf, isGetter, isSetter } from "./set_get.js"
 import { english } from "./words.js"
 
 const HOPS = 64
@@ -27,24 +27,29 @@ export function lineage(links, selected, wiring = UNWIRED) {
   }
   const into = new Map()
   const from = new Map()
-  const join = (a, b, id) => {
-    group(into, b, { next: a, id })
-    group(from, a, { next: b, id })
+  const join = (a, b, id, virtual = null) => {
+    group(into, b, { next: a, id, virtual })
+    group(from, a, { next: b, id, virtual })
   }
   for (const link of links) {
     join(vertex(link.origin_id, "out", link.origin_slot), vertex(link.target_id, "in", link.target_slot), link.id)
   }
   for (const { from: [setter, input], to: [node, output] } of wiring.edges) {
-    join(vertex(setter, "in", input), vertex(node, "out", output), null)
+    join(vertex(setter, "in", input), vertex(node, "out", output), null,
+      setter === node ? null : edgeKey(setter, input, node, output))
   }
   const start = [...selected].flatMap((id) => wiring.split.has(id) ? ports.get(id) ?? [] : [id])
   const owners = (found) => new Set([...found].map((key) => owner.get(key) ?? key))
   const crossed = new Set()
+  const virtualUp = new Set()
+  const virtualDown = new Set()
   return {
     selected: new Set(selected),
-    upstream: owners(reach(start, into, crossed)),
-    downstream: owners(reach(start, from, crossed)),
+    upstream: owners(reach(start, into, crossed, virtualUp)),
+    downstream: owners(reach(start, from, crossed, virtualDown)),
     links: crossed,
+    virtualUp,
+    virtualDown,
   }
 }
 
@@ -54,13 +59,14 @@ function group(map, key, item) {
   else map.set(key, [item])
 }
 
-function reach(start, edges, crossed) {
+function reach(start, edges, crossed, virtuals) {
   const seen = new Set(start)
   const found = new Set()
   const queue = [...start]
   while (queue.length) {
-    for (const { next, id } of edges.get(queue.pop()) ?? []) {
+    for (const { next, id, virtual } of edges.get(queue.pop()) ?? []) {
       if (id != null) crossed.add(id)
+      if (virtual != null) virtuals.add(virtual)
       if (seen.has(next)) continue
       seen.add(next)
       found.add(next)
@@ -84,6 +90,7 @@ export function sameLineage(a, b) {
   if (!a || !b) return false
   return sameSet(a.selected, b.selected) && sameSet(a.upstream, b.upstream)
     && sameSet(a.downstream, b.downstream) && sameSet(a.links, b.links)
+    && sameSet(a.virtualUp, b.virtualUp) && sameSet(a.virtualDown, b.virtualDown)
 }
 
 function sameSet(a, b) {

@@ -5,6 +5,7 @@ import { english } from "./words.js"
 
 export const PROPERTY = "breeze_note"
 export const MARK = "breeze_paste"
+export const FOLDED = "breeze_note_folded"
 
 const PICKING = "breeze-picking"
 const TIP = "breeze-wire-tip breeze-note-tip"
@@ -166,7 +167,7 @@ export function installAttachedNotes(canvas, { enabled, say = english, changed =
       const spot = at(event)
       node = spot ? topAt(nodes(), spot) : null
     }
-    return node && isNote(node) ? node : null
+    return node && isNote(node) && !foldedHost(node) ? node : null
   }
 
   const aimed = (note, event, titleOnly) => {
@@ -273,6 +274,10 @@ export function hostOf(note) {
   if (id == null || !isNote(note)) return null
   const host = note.graph?.getNodeById?.(id)
   return host && host !== note && !isNote(host) ? host : null
+}
+
+export function foldedHost(note) {
+  return note?.properties?.[FOLDED] === true ? hostOf(note) : null
 }
 
 export function attach(note, host) {
@@ -386,6 +391,7 @@ function paint(canvas, preview) {
   const pairs = []
   for (const note of graph._nodes ?? []) {
     if (note === preview?.note) continue
+    if (foldedHost(note)) continue
     const host = hostOf(note)
     if (host && (note.selected || host.selected)) pairs.push([note, host])
   }

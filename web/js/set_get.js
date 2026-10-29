@@ -15,6 +15,32 @@ export function isSetter(node) {
   return SETTERS.has(node?.type)
 }
 
+export function edgeKey(setter, input, getter, output) {
+  return JSON.stringify([setter, input, getter, output])
+}
+
+export function virtualRole(found, key) {
+  const up = found?.virtualUp?.has(key)
+  const down = found?.virtualDown?.has(key)
+  return up && down ? "both" : up ? "up" : down ? "down" : null
+}
+
+export function virtualPairs(graph, edges) {
+  return edges.filter(({ from, to }) => from[0] !== to[0]).flatMap(({ from, to }) => {
+    const setter = graph.getNodeById(from[0])
+    const getter = graph.getNodeById(to[0])
+    if (!setter?.inputs?.[from[1]] || !getter?.outputs?.[to[1]]) return []
+    return [{ setter, getter, input: from[1], output: to[1], key: edgeKey(...from, ...to) }]
+  })
+}
+
+export function matchesVirtual(pair, a, b) {
+  const start = pair.setter.getConnectionPos?.(false, 0)
+  const end = pair.getter.getConnectionPos?.(true, 0)
+  return Boolean(start && end && a && b && Math.abs(start[0] - a[0]) < 1 && Math.abs(start[1] - a[1]) < 1
+    && Math.abs(end[0] - b[0]) < 1 && Math.abs(end[1] - b[1]) < 1)
+}
+
 export function isGetter(node) {
   return GETTERS.has(node?.type)
 }

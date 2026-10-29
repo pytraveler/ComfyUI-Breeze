@@ -49,6 +49,17 @@ export function installWireArrows(canvas, { enabled, flown = () => {}, routeOf =
   let probe = null
   let flash = null
 
+  const showFlash = (rects, colour, graph = canvas.graph) => {
+    const current = { graph, rects, colour, start: performance.now() }
+    flash = current
+    canvas.setDirty(true, false)
+    return () => {
+      if (flash !== current) return
+      flash = null
+      canvas.setDirty(true, false)
+    }
+  }
+
   const lighting = () => Boolean(light?.enabled())
   const wanted = () => enabled() || lighting()
 
@@ -141,8 +152,7 @@ export function installWireArrows(canvas, { enabled, flown = () => {}, routeOf =
       return
     }
     stop = fly(canvas, arrow.goals, () => {
-      flash = { graph, rects: arrow.goals, colour: arrow.colour, start: performance.now() }
-      canvas.setDirty(true, false)
+      showFlash(arrow.goals, arrow.colour, graph)
     })
   }, true)
   window.addEventListener("pointerup", (event) => {
@@ -173,7 +183,7 @@ export function installWireArrows(canvas, { enabled, flown = () => {}, routeOf =
     return { left: Math.min(...xs), top: Math.min(...ys), right: Math.max(...xs), bottom: Math.max(...ys) }
   }
 
-  return { wanted, rest, away: () => {}, area }
+  return { wanted, rest, away: () => {}, area, flash: showFlash }
 }
 
 export function arrowsAround(graph, links, point, scale, mode, colour, routeOf = () => null,

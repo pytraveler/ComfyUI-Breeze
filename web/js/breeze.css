@@ -105,3 +105,406 @@ body.breeze-picking,
 body.breeze-picking * {
   cursor: crosshair !important;
 }
+
+.breeze-panel-container {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.breeze-workflow-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  color: var(--fg-color, #ddd);
+  background: var(--comfy-menu-bg, #222);
+  font: 14px/1.5 system-ui, sans-serif;
+}
+
+.breeze-panel-header {
+  flex: 0 0 auto;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color, #555);
+}
+
+.breeze-panel-header h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.breeze-panel-search {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border-color, #666);
+  border-radius: 6px;
+  color: inherit;
+  background: var(--comfy-input-bg, #333);
+}
+
+.breeze-reference {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.breeze-panel-body {
+  min-height: 0;
+  overflow: auto;
+  padding: 0 16px 16px;
+  scrollbar-gutter: stable;
+}
+
+.breeze-note-article,
+.breeze-change-article {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border-color, #555);
+  overflow-wrap: anywhere;
+}
+
+.breeze-note-article h3,
+.breeze-change-article h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.breeze-note-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.breeze-note-badge {
+  position: fixed;
+  transform-origin: top right;
+  z-index: 5;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color, #666);
+  background: var(--comfy-menu-bg, #222);
+  color: var(--p-primary-color, #76b9f0);
+  padding: 0 5px;
+  font: 16px/22px system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.breeze-note-badge[hidden] {
+  display: none;
+}
+
+.breeze-folded-dialog {
+  width: min(580px, calc(100vw - 32px));
+  max-height: min(720px, calc(100vh - 32px));
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid var(--border-color, #555);
+  border-radius: 12px;
+  color: var(--fg-color, #ddd);
+  background: var(--comfy-menu-bg, #222);
+  font: 14px/1.5 system-ui, sans-serif;
+}
+
+.breeze-folded-dialog::backdrop {
+  background: #0005;
+}
+
+.breeze-folded-dialog > h2 {
+  font-size: 18px;
+  margin: 0 0 12px;
+}
+
+.breeze-note-heading {
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.breeze-note-heading:focus-visible {
+  outline: 2px solid var(--p-primary-color, #76b9f0);
+  outline-offset: 4px;
+}
+
+.breeze-note-locate {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.breeze-node-link {
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.breeze-node-link:hover {
+  text-decoration: underline;
+}
+
+.breeze-panel-hint,
+.breeze-panel-empty {
+  color: var(--descrip-text, #aaa);
+  margin: 8px 0;
+}
+
+.breeze-panel-hint {
+  font-size: 12px;
+}
+
+.breeze-note-plain {
+  white-space: pre-wrap;
+}
+
+.breeze-note-body img,
+.breeze-note-body video {
+  max-width: 100%;
+}
+
+.breeze-note-body pre,
+.breeze-note-body table {
+  display: block;
+  overflow-x: auto;
+}
+
+.breeze-note-body pre {
+  padding: 8px;
+  background: var(--comfy-input-bg, #333);
+}
+
+.breeze-note-body a {
+  color: var(--p-primary-color, #76b9f0);
+  text-decoration: underline;
+}
+
+.breeze-note-body h1,
+.breeze-note-body h2,
+.breeze-note-body h3 {
+  font-size: 1.15em;
+  font-weight: 600;
+  margin: 12px 0 6px;
+}
+
+.breeze-note-body ul,
+.breeze-note-body ol {
+  padding-left: 24px;
+  list-style: revert;
+}
+
+.breeze-note-body td,
+.breeze-note-body th {
+  padding: 4px 8px;
+  border: 1px solid var(--border-color, #555);
+}
+
+.breeze-panel-button {
+  padding: 6px 10px;
+  border: 1px solid var(--border-color, #666);
+  border-radius: 6px;
+  color: inherit;
+  background: var(--comfy-input-bg, #333);
+  cursor: pointer;
+}
+
+.breeze-panel-button:hover {
+  filter: brightness(1.2);
+}
+
+.breeze-change-values {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 10px;
+  margin: 8px 0;
+}
+
+.breeze-change-values dt {
+  color: var(--descrip-text, #aaa);
+}
+
+.breeze-change-values dd {
+  margin: 0;
+  white-space: pre-wrap;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.breeze-value-after,
+.breeze-field-label {
+  border-left: 3px solid #e8ae46;
+  padding-left: 6px;
+}
+
+.breeze-changed-field {
+  outline: 2px solid #e8ae46 !important;
+  outline-offset: 1px;
+}
+.breeze-connect {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 16px;
+  width: min(720px, calc(100vw - 16px));
+  max-height: min(640px, calc(100vh - 16px));
+  box-sizing: border-box;
+  overflow: auto;
+  color: var(--fg-color, #ddd);
+  background: var(--comfy-menu-bg, #202020);
+  border: 1px solid var(--border-color, #555);
+  border-radius: 12px;
+  box-shadow: 0 12px 48px #0008;
+  font: 14px/1.4 Arial, sans-serif;
+}
+
+.breeze-connect[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.breeze-connect::backdrop {
+  background: #0002;
+}
+
+.breeze-connect-header,
+.breeze-connect-footer,
+.breeze-connect-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.breeze-connect-header strong {
+  font-size: 18px;
+  margin-right: auto;
+}
+
+.breeze-connect-footer {
+  justify-content: flex-end;
+}
+
+.breeze-connect p {
+  margin: 0;
+}
+
+.breeze-connect-source,
+.breeze-connect-group,
+.breeze-connect-state {
+  font-size: 12px;
+  opacity: 0.75;
+  overflow-wrap: anywhere;
+}
+
+.breeze-connect button,
+.breeze-connect-search {
+  font: inherit;
+  color: inherit;
+  background: var(--comfy-input-bg, #303030);
+  border: 1px solid var(--border-color, #555);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.breeze-connect button {
+  cursor: pointer;
+}
+
+.breeze-connect button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.breeze-connect button:focus-visible,
+.breeze-connect-search:focus-visible {
+  outline: 2px solid #4cb3ff;
+  outline-offset: 1px;
+}
+
+.breeze-connect-options label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.breeze-connect-options input {
+  accent-color: #4cb3ff;
+}
+
+.breeze-connect-list {
+  min-height: 60px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.breeze-connect-row {
+  display: flex;
+  gap: 6px;
+}
+
+.breeze-connect-target {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.breeze-connect-target[aria-pressed] {
+  position: relative;
+  padding-left: 32px;
+}
+
+.breeze-connect-target[aria-pressed]::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  left: 10px;
+  width: 12px;
+  height: 12px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+}
+
+.breeze-connect-target[aria-pressed="true"]::before {
+  background: #4cb3ff;
+  box-shadow: inset 0 0 0 2px var(--comfy-input-bg, #303030);
+}
+
+.breeze-connect-target[aria-pressed="true"] {
+  border-color: #4cb3ff;
+}
+
+.breeze-connect-node {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.breeze-connect-locate {
+  align-self: center;
+  max-width: 95px;
+  font-size: 12px !important;
+}
+
+.breeze-connect-status:empty {
+  display: none;
+}
+
+.breeze-connect-status {
+  color: #e8ae46;
+}
+
+.breeze-connect [hidden] {
+  display: none;
+}

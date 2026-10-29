@@ -7,22 +7,26 @@ import { COMMAND, installCompassButton } from "./compass_button.js"
 import { fetchForecast, movingNodes } from "./forecast.js"
 import { installForecastFeed } from "./forecast_feed.js"
 import { installForecast } from "./forecast_view.js"
+import { installFoldedNotes } from "./folded_notes.js"
 import { installInputValues } from "./input_values.js"
 import { installLineage } from "./lineage.js"
 import { fetchOutputs, wireValue } from "./last_run.js"
 import { installRunLight, watchQueue } from "./run_light.js"
+import { installQuickConnect } from "./quick_connect_view.js"
 import { COMPASS, definitions, reader } from "./settings.js"
 import { installTrunks } from "./trunks.js"
 import { installWireArrows } from "./wire_arrows.js"
 import { watchWires } from "./wire_hover.js"
 import { installWireTip } from "./wire_tip.js"
 import { fetchTranslations, speaker, wordsFor } from "./words.js"
+import { installWorkflowPanels } from "./workflow_panels.js"
 
 let compassButton = null
 
 let say = null
 
 let notes = null
+let foldedNotes = null
 
 function redraw() {
   app.canvas?.setDirty?.(true, true)
@@ -58,13 +62,13 @@ app.registerExtension({
   ],
   getNodeMenuItems(node) {
     if (!say) return []
-    return [...(settings.cards() ? cardMenu(node, { say, changed: graphChanged }) : []), ...(notes?.menu(node) ?? [])]
+    return [...(settings.cards() ? cardMenu(node, { say, changed: graphChanged }) : []), ...(notes?.menu(node) ?? []), ...(foldedNotes?.menu(node) ?? [])]
   },
   async setup() {
     const canvas = app.canvas
     addStyles()
     let translations = null
-    fetchTranslations((route) => api.fetchApi(route)).then((body) => {
+    const translationsReady = fetchTranslations((route) => api.fetchApi(route)).then((body) => {
       translations = body
     })
     say = speaker(() => wordsFor(translations, settings.locale()))
@@ -127,7 +131,7 @@ app.registerExtension({
       light,
     })
     const hover = watchWires(canvas, [arrows, tip])
-    installCompass(canvas, { mode: settings.compass, note: settings.compassNote, say })
+    installCompass(canvas, { mode: settings.compass, note: settings.compassNote, say, hidden: (node) => foldedNotes?.hidden(node) ?? false })
     compassButton = installCompassButton({
       mode: settings.compass,
       set: (value) => app.extensionManager.setting.set(COMPASS, value),
@@ -143,5 +147,9 @@ app.registerExtension({
       feed,
       redraw,
     })
+    await translationsReady
+    foldedNotes = installFoldedNotes(app, { enabled: settings.notes, say, changed: graphChanged })
+    installWorkflowPanels(app, { say, changed: graphChanged, revealNote: foldedNotes.reveal })
+    installQuickConnect(app, { enabled: settings.quickConnect, say, flash: arrows.flash })
   },
 })
